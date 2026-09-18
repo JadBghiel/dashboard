@@ -1,0 +1,24 @@
+# dev deps only, the app itself runs w/ npm run dev on the host
+# the graded stack that serves 8080 is docker-compose.yml at the root, see #6
+name: dashboard-dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dashboard
+      POSTGRES_PASSWORD: dashboard
+      POSTGRES_DB: dashboard
+    ports:
+      # not 5432 so it doesnt fight a local postgres, not 55432 bc survivor pool already takes it
+      - "55433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashboard -d dashboard"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  db-data:
