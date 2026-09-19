@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Dashboard" };
+// absolute, the layout template would make it "Dashboard · Dashboard"
+export const metadata: Metadata = { title: { absolute: "Dashboard" } };
 
 export default function DashboardPage() {
   return (
