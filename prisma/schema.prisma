@@ -1,5 +1,11 @@
 // data model for the dash. better-auth owns user, session, account and verification, the rest is
-// ours. the generator and the client arrive w/ #5, the first code that actually queries
+// ours
+
+// out of node_modules and gitignored, regenerated on every npm install by the postinstall script
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
 
 datasource db {
   provider = "postgresql"
