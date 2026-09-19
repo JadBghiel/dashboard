@@ -15,8 +15,10 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // only the prisma cli reads this (migrate, studio). left undefined when unset instead of
-    // using env() which throws, so prisma generate still works in a build w/o a db
-    url: process.env.DATABASE_URL,
+    // only the prisma cli reads this (migrate, studio). on neon DATABASE_URL goes through the
+    // pooler, which migrations dont work through, so the direct url wins when its set. left
+    // undefined when both are unset instead of env() which throws, so prisma generate still works
+    // in a build w/o a db
+    url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
   },
 });

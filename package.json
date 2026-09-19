@@ -12,6 +12,7 @@
     "setup": "node scripts/setup.mjs",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset && prisma db seed",
     "db:studio": "prisma studio",
     "lint": "eslint",
