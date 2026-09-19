@@ -11,6 +11,8 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // tsx bc the generated client is plain ts and node 20 cant run it on its own
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     // only the prisma cli reads this (migrate, studio). left undefined when unset instead of
