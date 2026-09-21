@@ -28,7 +28,20 @@ it: `docker compose -f docker-compose.dev.yml down`.
 
 These accounts only exist in your local database. The seed refuses to run against anything else.
 
-The Docker Compose stack serving port 8080 arrives with [issue #6](../../issues/6).
+The API lives under `/api`. Its reference is at http://localhost:3000/api/docs and the OpenAPI
+document it reads is at http://localhost:3000/api/openapi.json, both generated from the same schemas
+the server validates with.
+
+## Running the whole stack in Docker
+
+```bash
+docker compose build
+docker compose up
+```
+
+The server answers on http://localhost:8080 and migrations run on startup. This stack is separate
+from the development one: `docker-compose.dev.yml` only holds the databases, while
+`docker-compose.yml` builds and runs the app itself.
 
 ## Scripts
 
@@ -48,4 +61,5 @@ The Docker Compose stack serving port 8080 arrives with [issue #6](../../issues/
 
 ## Stack
 
-Next.js 16 (App Router) with Tailwind CSS v4 and shadcn/ui.
+next.js (app router) with tailwind css and shadcn/ui on the frontend, hono api mounted inside the app, prisma and postgres (via neon on vercel) for storage, and vitest with mock service worker for the tests 
+
