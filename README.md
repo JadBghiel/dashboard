@@ -2,6 +2,8 @@
 
 A customizable dashboard that gathers information from services you already use, weather, GitHub, Spotify, RSS feeds and the stock market, into widgets that refresh on their own schedule.
 
+## AVAILABLE ONLINE ON VERCEL: [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
+
 ## Requirements
 
 - Node.js 22 or later (see `.nvmrc`)
