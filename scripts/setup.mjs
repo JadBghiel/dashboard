@@ -2,7 +2,7 @@
 // its also how you bring the db back after a reboot
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, readFileSync } from "node:fs";
 
 const COMPOSE_FILE = "docker-compose.dev.yml";
 // npx and docker-compose are .cmd shims on windows, spawn only finds those through a shell
@@ -40,9 +40,32 @@ function composeEnv([cmd, ...pre]) {
   return { ...process.env, DOCKER_API_VERSION: min };
 }
 
+// keys of the uncommented KEY=... lines of an env file
+const keysOf = (text) =>
+  new Set(
+    text
+      .split("\n")
+      .map((l) => l.match(/^\s*([A-Z0-9_]+)\s*=/)?.[1])
+      .filter(Boolean),
+  );
+
 if (!existsSync(".env.local")) {
   copyFileSync(".env.example", ".env.local");
   console.log("Created .env.local from .env.example");
+} else {
+  const example = readFileSync(".env.example", "utf8");
+  const local = readFileSync(".env.local", "utf8");
+  const have = keysOf(local);
+  const missing = example
+    .split(/\n(?=\s*(?:#|[A-Z0-9_]+\s*=))/)
+    .filter((block) => [...keysOf(block)].some((k) => !have.has(k)));
+
+  if (missing.length > 0) {
+    appendFileSync(".env.local", `\n${missing.join("\n").trim()}\n`);
+    console.log(
+      `Added new vars to .env.local: ${missing.flatMap((b) => [...keysOf(b)]).join(", ")}`,
+    );
+  }
 }
 
 const compose = findCompose();
