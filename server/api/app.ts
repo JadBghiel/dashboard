@@ -5,7 +5,10 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 
+import { registry } from "@/server/registry";
+
 import { notFound, onError, type ApiError } from "./errors";
+import { aboutRoute, buildAbout, clientHost } from "./routes/about";
 import { pingRoute } from "./routes/ping";
 
 // basePath bc the next catch all hands us the full url, /api included
@@ -29,9 +32,13 @@ const app = new OpenAPIHono({
 app.onError(onError);
 app.notFound(notFound);
 
-const routes = app.openapi(pingRoute, (c) =>
-  c.json({ message: "pong" as const, time: Math.floor(Date.now() / 1000) }, 200),
-);
+const routes = app
+  .openapi(pingRoute, (c) =>
+    c.json({ message: "pong" as const, time: Math.floor(Date.now() / 1000) }, 200),
+  )
+  .openapi(aboutRoute, (c) =>
+    c.json(buildAbout(clientHost(c.req.raw.headers), registry.catalog), 200),
+  );
 
 app.doc31("/openapi.json", {
   openapi: "3.1.0",
