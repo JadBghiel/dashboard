@@ -17,3 +17,6 @@ Dockerfile
 .dockerignore
 playwright-report
 test-results
+
+tests
+vitest.config.mts
