@@ -1,0 +1,46 @@
+# docker-compose build && docker-compose up, server on 8080
+# docker-compose.dev.yml is the dev only one w/ the databases
+name: dashboard
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dashboard
+      POSTGRES_PASSWORD: dashboard
+      POSTGRES_DB: dashboard
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashboard -d dashboard"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  server:
+    build: .
+    # the port the subject asks for
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # node instead of curl, the slim image has no http client and fetch is built in. /api/ping
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/api/ping').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  db-data:
