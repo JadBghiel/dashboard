@@ -1,0 +1,19 @@
+# keep the build context small and never let a local secret or a host built artifact in
+node_modules
+.next
+generated
+.git
+.github
+docs
+*.md
+
+# secrets. .env.example is fine but the image has no use for it
+.env
+.env.*
+
+# host only
+docker-compose*.yml
+Dockerfile
+.dockerignore
+playwright-report
+test-results
