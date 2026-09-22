@@ -1,12 +1,13 @@
 "use client";
 
-import { LayoutDashboard, type LucideIcon, Plug, Settings, Shield } from "lucide-react";
+import { LayoutDashboard, LogIn, type LucideIcon, Plug, Settings, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -88,7 +89,18 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/sign-in")} tooltip="Sign in">
+              <Link href="/sign-in">
+                <LogIn />
+                <span>Sign in</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
