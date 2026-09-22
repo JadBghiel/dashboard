@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 type MailInput = {
     to: string,
     subject: string,
@@ -5,5 +7,16 @@ type MailInput = {
 }
 
 export async function sendMail(input: MailInput) {
-    console.log("sendMail called:", input) // just for testing sending emails
+    const transport = nodemailer.createTransport({
+        host: process.env.SMTP_HOST ?? "localhost",
+        port: Number(process.env.SMTP_PORT ?? 1025),
+        secure: false,
+    });
+
+    await transport.sendMail({
+        from: process.env.MAIL_FROM ?? "dashboard@localhost",
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+    });
 }
