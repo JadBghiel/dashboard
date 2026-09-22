@@ -1,9 +1,17 @@
 /** errors leaves the api in the same shape: { code, message } */
 
+import { z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
-export type ApiError = { code: string; message: string };
+export const ApiErrorSchema = z.object({ code: z.string(), message: z.string() });
+export type ApiError = z.infer<typeof ApiErrorSchema>;
+
+/** openapi response entry for an error status, /api/docs lists what a route can fail with */
+export const errorResponse = (description: string) => ({
+  description,
+  content: { "application/json": { schema: ApiErrorSchema } },
+});
 
 const CODES: Record<number, string> = {
   400: "bad_request",
