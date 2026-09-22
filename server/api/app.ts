@@ -11,6 +11,8 @@ import { notFound, onError, type ApiError } from "./errors";
 import { aboutRoute, buildAbout, clientHost } from "./routes/about";
 import { pingRoute } from "./routes/ping";
 
+import { auth } from "@/lib/auth";
+
 // basePath bc the next catch all hands us the full url, /api included
 const app = new OpenAPIHono({
   // 1 place for every zod failure, so a bad body reads like any other error
@@ -31,6 +33,8 @@ const app = new OpenAPIHono({
 
 app.onError(onError);
 app.notFound(notFound);
+// better-auth owns everything under /auth: sign-up, sign-in, verify-email, oauth callbacks later
+app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
 const routes = app
   .openapi(pingRoute, (c) =>
