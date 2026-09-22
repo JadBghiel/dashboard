@@ -41,9 +41,11 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*
 
-# standalone brings its own minimal node_modules, static is not traced so it comes separately
+# standalone brings its own minimal node_modules, static and public are not traced so they come
+# separately (public holds the weather icons)
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
 
 # the migration side: schema, migrations, config and the cli. it lands in the same node_modules as
 # the traced ones so prisma.config.ts can still resolve "prisma/config" from /app
