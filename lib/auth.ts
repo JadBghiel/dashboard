@@ -26,7 +26,7 @@ export const auth = betterAuth({
       await sendMail({
         to: user.email,
         subject: "Confirm your dashboard account",
-        html: `<p>Click to confirm: <a href="${url}">${url}</a></p>`,
+        html: `<p>Click to confirm: <a href="${url}">click here</a></p>`,
       });
     },
   },
