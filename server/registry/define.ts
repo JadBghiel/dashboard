@@ -14,12 +14,27 @@ export type ServiceAuth = "none" | "oauth" | "api_key";
 export type WidgetCredentials =
   { kind: "oauth"; accessToken: string } | { kind: "api_key"; apiKey: string } | null;
 
+/** where the user is. saved = they picked it (cookie), ip = guessed from the request by vercel,
+ * default = nothing known, the fallback city */
+export type UserLocation = {
+  name: string;
+  lat: number;
+  lon: number;
+  source: "saved" | "ip" | "default";
+};
+
 export type FetchContext<Params> = {
   params: Params;
   credentials: WidgetCredentials;
-  // aborted when the request that asked for the data goes away, pass it to fetch()
+  // always set, the location chain falls back to a default city
+  location: UserLocation;
+  // aborted when the request that asked for the data goes away or times out, pass it to fetch()
   signal: AbortSignal;
 };
+
+/** a failure the user can act on ("city not found"), its message is shown as is. anything else a
+ * fetcher throws counts as the upstream being down and its text never leaves the server */
+export class WidgetError extends Error {}
 
 export type ParamsSchema = z.ZodObject;
 
