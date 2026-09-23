@@ -1,18 +1,36 @@
 "use client";
 
 import { useState } from "react";
-
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { authClient } from "@/lib/auth-client";
 
 export default function LogInPage() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const { error } = await authClient.signIn.username({ username, password });
+
+    console.log("sign-in error:", error); //temp
+    setLoading(false);
+    if (error) {
+      setError(error.message ?? "Something went wrong.");
+      return;
+    }
+    router.push("/dashboard");
+  }
 
   return (
-    <form className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <h1 className="text-xl font-semibold">Log in</h1>
-
       <div className="space-y-1">
         <label htmlFor="username" className="text-sm font-medium">
           Username
@@ -24,7 +42,6 @@ export default function LogInPage() {
           required
         />
       </div>
-
       <div className="space-y-1">
         <label htmlFor="password" className="text-sm font-medium">
           Password
@@ -37,9 +54,13 @@ export default function LogInPage() {
           required
         />
       </div>
-
-      <Button type="submit" className="w-full">
-        Log in
+      {error && (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Logging in..." : "Log in"}
       </Button>
     </form>
   );
