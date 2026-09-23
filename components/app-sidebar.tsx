@@ -92,10 +92,10 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/sign-in")} tooltip="Sign in">
-              <Link href="/sign-in">
+            <SidebarMenuButton asChild isActive={isActive("/log-in")} tooltip="Log in">
+              <Link href="/log-in">
                 <LogIn />
-                <span>Sign in</span>
+                <span>Log in</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
