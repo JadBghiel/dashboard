@@ -9,7 +9,18 @@ import { registry } from "@/server/registry";
 
 import { notFound, onError, type ApiError } from "./errors";
 import { aboutRoute, buildAbout, clientHost } from "./routes/about";
+import {
+  deleteLocation,
+  deleteLocationRoute,
+  getLocation,
+  getLocationRoute,
+  putLocation,
+  putLocationRoute,
+  searchLocation,
+  searchLocationRoute,
+} from "./routes/location";
 import { pingRoute } from "./routes/ping";
+import { widgetData, widgetDataRoute } from "./routes/widgets";
 
 import { auth } from "@/lib/auth";
 
@@ -42,7 +53,12 @@ const routes = app
   )
   .openapi(aboutRoute, (c) =>
     c.json(buildAbout(clientHost(c.req.raw.headers), registry.catalog), 200),
-  );
+  )
+  .openapi(getLocationRoute, getLocation)
+  .openapi(putLocationRoute, putLocation)
+  .openapi(deleteLocationRoute, deleteLocation)
+  .openapi(searchLocationRoute, searchLocation)
+  .openapi(widgetDataRoute, widgetData);
 
 app.doc31("/openapi.json", {
   openapi: "3.1.0",

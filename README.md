@@ -4,6 +4,18 @@ A customizable dashboard that gathers information from services you already use,
 
 ## AVAILABLE ONLINE ON VERCEL: [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
 
+## Services and widgets
+
+| Service | Account needed | Widget            | Parameters                                                                               |
+| ------- | -------------- | ----------------- | ---------------------------------------------------------------------------------------- |
+| Weather | No             | `current_weather` | `city` (empty = your location), `units` (metric, imperial), `show_wind`, `days` (0 to 7) |
+
+The full, always up to date list is served at `/about.json`, generated from the same definitions.
+
+**Your location.** Weather follows where you are. Pick a city or use your device location from the pin
+in the top bar; the choice is kept in a cookie. Until you pick one, the online version guesses your
+city from your connection, and the Docker version uses Madrid.
+
 ## Requirements
 
 - Node.js 22 or later (see `.nvmrc`)
@@ -63,5 +75,4 @@ from the development one: `docker-compose.dev.yml` only holds the databases, whi
 
 ## Stack
 
-next.js (app router) with tailwind css and shadcn/ui on the frontend, hono api mounted inside the app, prisma and postgres (via neon on vercel) for storage, and vitest with mock service worker for the tests 
-
+next.js (app router) with tailwind css and shadcn/ui on the frontend, hono api mounted inside the app, prisma and postgres (via neon on vercel) for storage, and vitest with mock service worker for the tests
