@@ -19,7 +19,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await authClient.signUp.email({ name, username, email, password });
+    const { error } = await authClient.signUp.email({ name, username, email, password, callbackURL: "/verify-email" });
 
     setLoading(false);
     if (error) {
