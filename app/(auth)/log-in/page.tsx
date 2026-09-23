@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import Link from "next/link";
 
 export default function LogInPage() {
   const router = useRouter();
@@ -19,7 +20,6 @@ export default function LogInPage() {
     setError(null);
     const { error } = await authClient.signIn.username({ username, password });
 
-    console.log("sign-in error:", error); //temp
     setLoading(false);
     if (error) {
       setError(error.message ?? "Something went wrong.");
@@ -62,6 +62,12 @@ export default function LogInPage() {
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Logging in..." : "Log in"}
       </Button>
+      <p className="text-muted-foreground text-center text-sm">
+        Don&apos;t have an account?{" "}
+        <Link href="/register" className="underline">
+          Register
+        </Link>
+      </p>
     </form>
   );
 }
