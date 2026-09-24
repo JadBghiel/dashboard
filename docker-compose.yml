@@ -17,6 +17,12 @@ services:
       timeout: 3s
       retries: 30
 
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
   server:
     build: .
     # the port the subject asks for
@@ -24,9 +30,16 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
+      BETTER_AUTH_SECRET: dev-only-secret-for-the-graded-stack-change-me
+      BETTER_AUTH_URL: http://localhost:8080
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: dashboard@localhost
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     healthcheck:
       # node instead of curl, the slim image has no http client and fetch is built in. hits the
       # graded url itself, healthy = the rewrite and the registry both work
