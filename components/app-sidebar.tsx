@@ -1,8 +1,8 @@
 "use client";
 
-import { LayoutDashboard, LogIn, type LucideIcon, Plug, Settings, Shield } from "lucide-react";
+import { LayoutDashboard, LogIn, LogOut, type LucideIcon, Plug, Settings, Shield } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   Sidebar,
@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { authClient, useSession } from "@/lib/auth-client";
 
 type NavItem = {
   title: string;
@@ -35,9 +36,16 @@ const ADMIN_NAV: NavItem[] = [{ title: "Admin", href: "/admin", icon: Shield }];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session } = useSession();
 
   // /services and /services/github both light up the services entry
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+  async function handleLogOut() {
+    await authClient.signOut();
+    router.push("/log-in");
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -89,18 +97,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/log-in")} tooltip="Log in">
-              <Link href="/log-in">
-                <LogIn />
-                <span>Log in</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {session ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleLogOut} tooltip={`Log out (${session.user.name})`}>
+                <LogOut />
+                <span>Log out</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ) : (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/log-in")} tooltip="Log in">
+                <Link href="/log-in">
+                  <LogIn />
+                  <span>Log in</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );
