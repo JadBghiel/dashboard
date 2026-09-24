@@ -35,7 +35,7 @@ export async function runWidget(
       signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(TIMEOUT_MS)]),
     });
 
-    // fetcher: 
+    // fetcher:
     const payload = widget.payload.safeParse(raw);
     if (!payload.success) {
       console.error(`widget ${widget.id} returned a bad payload`, payload.error.issues);
@@ -44,7 +44,8 @@ export async function runWidget(
     return { ok: true, data: payload.data };
   } catch (err) {
     if (err instanceof WidgetError) return { ok: false, reason: "widget", message: err.message };
-    console.error(`widget ${widget.id} failed`, err);
+    // the page went away mid request, nobody is waiting for an answer and nothing is broken
+    if (!ctx.signal.aborted) console.error(`widget ${widget.id} failed`, err);
     return upstreamDown();
   }
 }

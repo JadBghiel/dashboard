@@ -1,6 +1,6 @@
 "use client";
 
-/** where the weather is for, the choice is saved in an httpOnly cookie through /api/location, 
+/** where the weather is for, the choice is saved in an httpOnly cookie through /api/location,
  * safer this way, its also reshred after any change so location refetches */
 
 import { LoaderCircle, LocateFixed, MapPin, Search } from "lucide-react";
@@ -13,7 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { api } from "@/lib/api";
 import type { UserLocation } from "@/server/registry/define";
 
-type Place = { name: string; country?: string; admin1?: string; lat: number; lon: number };
+type Place = {
+  name: string;
+  country?: string;
+  countryCode?: string;
+  admin1?: string;
+  lat: number;
+  lon: number;
+};
 
 const SOURCE_LABEL: Record<UserLocation["source"], string> = {
   saved: "Saved by you",
@@ -53,7 +60,7 @@ export function LocationPicker({ location }: { location: UserLocation }) {
     };
   }, [query]);
 
-  async function save(place: { name: string; lat: number; lon: number }) {
+  async function save(place: { name: string; lat: number; lon: number; country?: string }) {
     setBusy(true);
     const res = await api.location.$put({ json: place });
     setBusy(false);
@@ -144,7 +151,9 @@ export function LocationPicker({ location }: { location: UserLocation }) {
                 <Button
                   variant="ghost"
                   className="h-auto w-full justify-start py-1.5 text-left"
-                  onClick={() => save({ name: p.name, lat: p.lat, lon: p.lon })}
+                  onClick={() =>
+                    save({ name: p.name, lat: p.lat, lon: p.lon, country: p.countryCode })
+                  }
                   disabled={busy}
                 >
                   <span>

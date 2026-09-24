@@ -8,6 +8,7 @@ export const weather = defineService({
   id: "weather",
   name: "Weather",
   description: "Current conditions and forecasts, no account needed",
+  category: "utility",
   auth: "none",
   widgets: [currentWeatherWidget],
 });

@@ -5,12 +5,8 @@ import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
 
-import {
-  LOCATION_COOKIE,
-  LOCATION_MAX_AGE,
-  SavedLocation,
-  resolveLocation,
-} from "@/server/location";
+import { LOCATION_COOKIE, SavedLocation, resolveLocation } from "@/server/location";
+import { prefCookie } from "@/server/cookies";
 import { geocode } from "@/server/services/weather/open-meteo";
 
 import { errorResponse } from "../errors";
@@ -19,6 +15,7 @@ const LocationResponse = z.object({
   name: z.string(),
   lat: z.number(),
   lon: z.number(),
+  country: z.string(),
   source: z.enum(["saved", "ip", "default"]),
 });
 
@@ -70,6 +67,7 @@ export const searchLocationRoute = createRoute({
               z.object({
                 name: z.string(),
                 country: z.string().optional(),
+                countryCode: z.string().optional(),
                 admin1: z.string().optional(),
                 lat: z.number(),
                 lon: z.number(),
@@ -90,15 +88,9 @@ export const getLocation: RouteHandler<typeof getLocationRoute> = (c) => c.json(
 
 export const putLocation: RouteHandler<typeof putLocationRoute> = (c) => {
   const saved = c.req.valid("json");
-  setCookie(c, LOCATION_COOKIE, JSON.stringify(saved), {
-    path: "/",
-    httpOnly: true,
-    sameSite: "Lax",
-    maxAge: LOCATION_MAX_AGE,
-    // docker serves plain http on localhost, a secure cookie would never come back there
-    secure: new URL(c.req.url).protocol === "https:",
-  });
-  return c.json({ ...saved, source: "saved" as const }, 200);
+  setCookie(c, LOCATION_COOKIE, JSON.stringify(saved), prefCookie(c.req.url));
+  // resolved like any later request will be, so the country fallback is the same
+  return c.json(resolveLocation(JSON.stringify(saved), c.req.raw.headers), 200);
 };
 
 export const deleteLocation: RouteHandler<typeof deleteLocationRoute> = (c) => {
