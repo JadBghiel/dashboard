@@ -17,7 +17,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { authClient, useSession } from "@/lib/auth-client";
+
 
 type NavItem = {
   title: string;
@@ -37,7 +39,7 @@ const ADMIN_NAV: NavItem[] = [{ title: "Admin", href: "/admin", icon: Shield }];
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session , isPending } = useSession();
 
   // /services and /services/github both light up the services entry
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -100,7 +102,14 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          {session ? (
+          {isPending ? (
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 p-2">
+                <Skeleton className="size-4 shrink-0 rounded-md" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </SidebarMenuItem>
+          ) : session ? (
             <SidebarMenuItem>
               <SidebarMenuButton onClick={handleLogOut} tooltip={`Log out (${session.user.name})`}>
                 <LogOut />
