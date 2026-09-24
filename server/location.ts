@@ -7,12 +7,21 @@ import { z } from "zod";
 import type { UserLocation } from "./registry/define";
 
 export const LOCATION_COOKIE = "dash_location";
-export const LOCATION_MAX_AGE = 60 * 60 * 24 * 365;
+
+export const CountryCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{2}$/, "not a country code");
+
+// madrid's, and the fallback when nothing else tells us where the user is
+const DEFAULT_COUNTRY = "ES";
 
 export const SavedLocation = z.object({
   name: z.string().trim().min(1).max(80),
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
+  country: CountryCode.optional(),
 });
 export type SavedLocation = z.infer<typeof SavedLocation>;
 
@@ -20,6 +29,7 @@ export const DEFAULT_LOCATION: UserLocation = {
   name: "Madrid",
   lat: 40.4165,
   lon: -3.7026,
+  country: DEFAULT_COUNTRY,
   source: "default",
 };
 
@@ -49,12 +59,30 @@ function ipLocation(headers: HeaderReader): UserLocation | null {
     return null;
   }
   const city = headers.get("x-vercel-ip-city");
-  return { name: (city && safeDecode(city)) || "Your area", lat, lon, source: "ip" };
+  return {
+    name: (city && safeDecode(city)) || "Your area",
+    lat,
+    lon,
+    country: ipCountry(headers) ?? DEFAULT_COUNTRY,
+    source: "ip",
+  };
 }
+
+const ipCountry = (headers: HeaderReader) => {
+  const parsed = CountryCode.safeParse(headers.get("x-vercel-ip-country") ?? "");
+  return parsed.success ? parsed.data : null;
+};
 
 export function resolveLocation(savedRaw: string | undefined, headers: HeaderReader): UserLocation {
   const saved = parseSavedLocation(savedRaw);
-  if (saved) return { ...saved, source: "saved" };
+  // a device position has no country (no reverse geocoding), the connection's is the best guess
+  if (saved) {
+    return {
+      ...saved,
+      country: saved.country ?? ipCountry(headers) ?? DEFAULT_COUNTRY,
+      source: "saved",
+    };
+  }
   return ipLocation(headers) ?? DEFAULT_LOCATION;
 }
 
