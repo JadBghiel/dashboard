@@ -4,6 +4,8 @@
 
 import { z } from "zod";
 
+import type { NewsPrefs } from "../news-prefs";
+
 export type WidgetSize = "1x1" | "2x1" | "2x2";
 
 /** how a service gets its data. none = open api (weather), the others need the user to link or
@@ -20,14 +22,21 @@ export type UserLocation = {
   name: string;
   lat: number;
   lon: number;
+  // iso 3166 alpha 2 (ES, FR, US), what holidays and news default to
+  country: string;
   source: "saved" | "ip" | "default";
 };
+
+/** what the user saved w/o an account yet (cookies today, the account later) that a widget with an
+ * empty param falls back on, the way an empty city means "where you are" */
+export type UserPrefs = { watchlist: string[]; crypto: string[]; news: NewsPrefs | null };
 
 export type FetchContext<Params> = {
   params: Params;
   credentials: WidgetCredentials;
   // always set, the location chain falls back to a default city
   location: UserLocation;
+  prefs: UserPrefs;
   // aborted when the request that asked for the data goes away or times out, pass it to fetch()
   signal: AbortSignal;
 };
@@ -56,11 +65,17 @@ export type WidgetDef<P extends ParamsSchema = ParamsSchema, R extends z.ZodType
   fetch(ctx: FetchContext<z.infer<P>>): Promise<z.infer<R>>;
 };
 
+/** the 3 sections of the dashboard and of the services page */
+export type ServiceCategory = "utility" | "news" | "games";
+
 export type ServiceDef = {
   id: string;
   name: string;
   description: string;
+  category: ServiceCategory;
   auth: ServiceAuth;
+  // services w/ auth api_key: what the key is called and where to get one, for the services page
+  key?: { label: string; helpUrl: string; env: string };
   widgets: readonly WidgetDef[];
 };
 
