@@ -4,12 +4,22 @@
 
 import { z } from "zod";
 
+import { fetchOnceMore } from "../http";
+
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
 export type Units = "metric" | "imperial";
 
-export type Place = { name: string; country?: string; admin1?: string; lat: number; lon: number };
+export type Place = {
+  name: string;
+  country?: string;
+  // iso 3166 alpha 2, what holidays and news default to
+  countryCode?: string;
+  admin1?: string;
+  lat: number;
+  lon: number;
+};
 
 const GeocodingResponse = z.object({
   // absent, not empty, when nothing matches
@@ -20,6 +30,7 @@ const GeocodingResponse = z.object({
         latitude: z.number(),
         longitude: z.number(),
         country: z.string().optional(),
+        country_code: z.string().optional(),
         admin1: z.string().optional(),
       }),
     )
@@ -48,21 +59,9 @@ const ReportResponse = z.object({
 });
 
 async function getJson(url: URL, signal: AbortSignal): Promise<unknown> {
-  const res = await fetchOnceMore(url, signal);
+  const res = await fetchOnceMore(url, { signal, headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`open-meteo ${url.pathname} answered ${res.status}`);
   return res.json();
-}
-
-// a cold first connection sometimes times out (seen in dev: ETIMEDOUT, then fine right after). 1
-// retry on a network failure only
-async function fetchOnceMore(url: URL, signal: AbortSignal) {
-  const init = { signal, headers: { accept: "application/json" } };
-  try {
-    return await fetch(url, init);
-  } catch (err) {
-    if (signal.aborted) throw err;
-    return fetch(url, init);
-  }
 }
 
 const unitParams = (url: URL, units: Units) => {
@@ -94,6 +93,7 @@ export async function geocode(query: string, signal: AbortSignal, count = 5): Pr
   const places = results.map((r) => ({
     name: r.name,
     country: r.country,
+    countryCode: r.country_code?.toUpperCase(),
     admin1: r.admin1,
     lat: r.latitude,
     lon: r.longitude,
