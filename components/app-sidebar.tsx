@@ -5,6 +5,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -17,9 +26,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { authClient, useSession } from "@/lib/auth-client";
-
 
 type NavItem = {
   title: string;
@@ -39,7 +46,7 @@ const ADMIN_NAV: NavItem[] = [{ title: "Admin", href: "/admin", icon: Shield }];
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session , isPending } = useSession();
+  const { data: session, isPending } = useSession();
 
   // /services and /services/github both light up the services entry
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -111,10 +118,29 @@ export function AppSidebar() {
             </SidebarMenuItem>
           ) : session ? (
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={handleLogOut} tooltip={`Log out (${session.user.name})`}>
-                <LogOut />
-                <span>Log out</span>
-              </SidebarMenuButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton>
+                    <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      {session.user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="truncate">{session.user.name}</span>
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{session.user.name}</span>
+                      <span className="text-muted-foreground text-xs">{session.user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={handleLogOut}>
+                    <LogOut />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SidebarMenuItem>
           ) : (
             <SidebarMenuItem>
