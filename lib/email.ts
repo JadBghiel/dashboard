@@ -8,7 +8,7 @@ type MailInput = {
 
 export async function sendMail(input: MailInput) {
     const transport = nodemailer.createTransport({
-        host: process.env.SMTP_HOST ?? "localhost",
+        host: process.env.SMTP_HOST ?? "localhost", //local fallback
         port: Number(process.env.SMTP_PORT ?? 1025),
         secure: false,
     });
