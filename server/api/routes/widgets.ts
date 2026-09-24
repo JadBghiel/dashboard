@@ -4,7 +4,11 @@
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import { getCookie } from "hono/cookie";
 
+import { parseJsonCookie } from "@/server/cookies";
+import { CRYPTO_COOKIE, parseCryptoList } from "@/server/crypto-watchlist";
 import { LOCATION_COOKIE, resolveLocation } from "@/server/location";
+import { parseWatchlist, WATCHLIST_COOKIE } from "@/server/market-watchlist";
+import { NEWS_COOKIE, NewsPrefs } from "@/server/news-prefs";
 import { registry } from "@/server/registry";
 import { runWidget } from "@/server/registry/run";
 
@@ -51,13 +55,19 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   if (!service || !widget) {
     return c.json({ code: "not_found", message: `No widget ${widgetId} in ${serviceId}.` }, 404);
   }
-  // linked accounts and api keys arrive w/ #18/#19, until then only open services can run
-  if (service.auth !== "none") {
+  // linked accounts arrive w/ #19. key services run on the app key, their fetcher says so if its
+  // missing, a user's own key comes w/ the credential store (#17)
+  if (service.auth === "oauth") {
     return c.json({ code: "forbidden", message: `Link your ${service.name} account first.` }, 403);
   }
 
   const result = await runWidget(widget, c.req.valid("json").params, {
     location: resolveLocation(getCookie(c, LOCATION_COOKIE), c.req.raw.headers),
+    prefs: {
+      watchlist: parseWatchlist(getCookie(c, WATCHLIST_COOKIE)),
+      crypto: parseCryptoList(getCookie(c, CRYPTO_COOKIE)),
+      news: parseJsonCookie(getCookie(c, NEWS_COOKIE), NewsPrefs),
+    },
     credentials: null,
     signal: c.req.raw.signal,
   });
