@@ -24,6 +24,9 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
+      # from the shell or a root .env (compose doesnt read .env.local). empty = the market card says
+      # its not configured, everything else works
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
