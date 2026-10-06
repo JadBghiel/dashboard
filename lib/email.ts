@@ -6,6 +6,7 @@ type MailInput = {
     html: string,
 }
 
+//this function is specifically for local testing
 export async function sendMail(input: MailInput) {
     const transport = nodemailer.createTransport({
         host: process.env.SMTP_HOST ?? "localhost", //local fallback

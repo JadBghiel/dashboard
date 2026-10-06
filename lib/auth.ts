@@ -8,14 +8,16 @@ import { APIError } from "better-auth/api";
 import { createAuthMiddleware } from "better-auth/api";
 import { COMMON_PASSWORDS } from "./common-passwords";
 
+//there's 2 adapters cuz one (PrismaPg) tells prisma how to connect to postgres,
+//and the other one tells better-auth to use prisma as its storage.
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
-const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
+const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000" //localhost fallback
 
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: [appUrl],
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: process.env.BETTER_AUTH_SECRET, //we obviously don't use appUrl for the secret
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
@@ -54,11 +56,11 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path === "/sign-up/email") {
+    before: createAuthMiddleware(async (ctx) => { //we check if the password they used to register is in the common-passwords
+      if (ctx.path === "/sign-up/email") { //we can't put it in the databaseHooks cuz they only see the password hash
         const password = ctx.body?.password as string | undefined;
         if (password && COMMON_PASSWORDS.has(password.toLowerCase())) {
-          throw new APIError("UNPROCESSABLE_ENTITY", {
+          throw new APIError("UNPROCESSABLE_ENTITY", { //error 422 means that the syntax is correct, but the contained data is not
             message: "This password is too common. Please choose a different one.",
           });
         }
