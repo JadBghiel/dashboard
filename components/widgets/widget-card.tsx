@@ -31,6 +31,10 @@ type Props = {
   onRefresh: () => void;
   // ex: "open weather", "view all repositories", pinned to the bottom of the card
   footer?: React.ReactNode;
+  // extra header buttons next to refresh, like the news settings
+  actions?: React.ReactNode;
+  // the news panels' monitor look: monospace uppercase title, and a red "live" dot w/ a count
+  monitor?: { count?: number };
   className?: string;
   children: React.ReactNode;
 };
@@ -44,6 +48,8 @@ export function WidgetCard({
   hasData,
   onRefresh,
   footer,
+  actions,
+  monitor,
   className,
   children,
 }: Props) {
@@ -51,12 +57,28 @@ export function WidgetCard({
     // h-full so every card in a grid row is as tall as the tallest, footers line up
     <Card className={cn("shadow-soft h-full", className)} aria-busy={loading}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle
+          className={cn(
+            "flex items-center gap-2",
+            monitor && "font-mono text-sm tracking-widest uppercase",
+          )}
+        >
           {icon}
           {title}
+          {monitor?.count !== undefined && (
+            <span className="flex items-center gap-1 text-xs font-normal text-red-500">
+              <span
+                className="size-1.5 rounded-full bg-red-500 motion-safe:animate-pulse"
+                aria-hidden
+              />
+              {monitor.count}
+              <span className="sr-only">items</span>
+            </span>
+          )}
         </CardTitle>
         {subtitle && <CardDescription>{subtitle}</CardDescription>}
-        <CardAction>
+        <CardAction className="flex items-center">
+          {actions}
           <Button
             variant="ghost"
             size="icon"

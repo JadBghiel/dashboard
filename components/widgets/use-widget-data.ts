@@ -35,13 +35,13 @@ export function useWidgetData<T>(
   service: string,
   widget: string,
   params: Record<string, unknown>,
-  // changes when the user loc changes, so a card following "your location" refetches
-  // (we alr have weather, maybe we will have news/traffic too idk)
-  locationKey: string,
+  // changes when something the server reads from a cookie changes, so the card refetches: the
+  // location for weather, the hearted tickers for the market
+  refetchKey: string,
 ) {
   // params as a string so a new object w/ the same values doesnt refetch
   const paramsKey = JSON.stringify(params);
-  const key = `${service}/${widget}/${paramsKey}/${locationKey}`;
+  const key = `${service}/${widget}/${paramsKey}/${refetchKey}`;
 
   const [state, setState] = useState<Loaded<T>>({ key: null, data: null, error: null });
   const [refreshing, setRefreshing] = useState(false);
