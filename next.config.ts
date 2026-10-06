@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: import.meta.dirname,
   },
+
+  // company and coin logos come straight from finnhub's and coingecko's cdn, every other host stays
+  // blocked
+  images: {
+    remotePatterns: [
+      new URL("https://static2.finnhub.io/file/publicdatany/finnhubimage/**"),
+      new URL("https://coin-images.coingecko.com/coins/images/**"),
+    ],
+  },
 };
 
 export default nextConfig;

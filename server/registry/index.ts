@@ -8,7 +8,12 @@ export type CatalogWidget = Pick<WidgetDef, "id" | "name" | "description" | "siz
   params: ParamSpec[];
 };
 
-export type CatalogService = Pick<ServiceDef, "id" | "name" | "description" | "auth"> & {
+export type CatalogService = Pick<
+  ServiceDef,
+  "id" | "name" | "description" | "category" | "auth"
+> & {
+  // what the key is called and where to get one, never its value
+  key: { label: string; helpUrl: string } | null;
   widgets: CatalogWidget[];
 };
 
@@ -34,7 +39,9 @@ export function createRegistry(list: readonly ServiceDef[]) {
     id: s.id,
     name: s.name,
     description: s.description,
+    category: s.category,
     auth: s.auth,
+    key: s.key ? { label: s.key.label, helpUrl: s.key.helpUrl } : null,
     widgets: s.widgets.map((w) => ({
       id: w.id,
       name: w.name,
