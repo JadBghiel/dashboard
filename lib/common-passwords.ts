@@ -21,7 +21,7 @@ export const COMMON_PASSWORDS = new Set([
   "matthew", "access", "yankees", "987654321", "dallas", "austin", "thunder",
   "taylor", "matrix", "william", "corvette", "hello", "martin", "heather",
   "secret", "fucker", "merlin", "diamond", "1234qwer", "gfhjkm", "hammer",
-  "silver", "222222", "88888888", "anthony", "justin", "test", "bailey",
+  "silver", "222222", "888888888888888", "anthony", "justin", "test", "bailey",
   "q1w2e3r4t5", "patrick", "internet", "scooter", "orange", "11111", "golfer",
   "cookie", "richard", "samantha", "bigdog", "guitar", "jackson", "whatever",
   "mickey", "chicken", "sparky", "snoopy", "maverick", "phoenix", "camaro",
