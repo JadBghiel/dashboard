@@ -41,6 +41,11 @@ export const auth = betterAuth({
     },
   },
   plugins: [username(), admin()],
+  user: {
+    deleteUser: {
+      enabled: true,
+    },
+  },
   databaseHooks: { //this runs before better-auth inserts a new user row
     user: {
       create: {
