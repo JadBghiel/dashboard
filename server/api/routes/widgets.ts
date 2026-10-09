@@ -11,8 +11,8 @@ import { parseWatchlist, WATCHLIST_COOKIE } from "@/server/market-watchlist";
 import { NEWS_COOKIE, NewsPrefs } from "@/server/news-prefs";
 import { registry } from "@/server/registry";
 import { runWidget } from "@/server/registry/run";
-
 import { errorResponse } from "../errors";
+import { requireSubscription } from "../subscription-guard";
 
 export const widgetDataRoute = createRoute({
   method: "post",
@@ -41,7 +41,8 @@ export const widgetDataRoute = createRoute({
       },
     },
     400: errorResponse("a param doesnt match the widget schema"),
-    403: errorResponse("the service needs a linked account"),
+    401: errorResponse("not logged in"),
+    403: errorResponse("the service needs a subscription"),
     404: errorResponse("no such service or widget"),
     422: errorResponse("the params are valid but lead nowhere, e.g. an unknown city"),
     502: errorResponse("the upstream service is down"),
@@ -57,9 +58,13 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   }
   // linked accounts arrive w/ #19. key services run on the app key, their fetcher says so if its
   // missing, a user's own key comes w/ the credential store (#17)
-  if (service.auth === "oauth") {
-    return c.json({ code: "forbidden", message: `Link your ${service.name} account first.` }, 403);
-  }
+  //if (service.auth === "oauth") {
+  //  return c.json({ code: "forbidden", message: `Link your ${service.name} account first.` }, 403);
+  //}
+  //written like this will also block api_key services
+  const check = await requireSubscription(c, service);
+  if (!check.ok)
+    return c.json(check.body, check.status);
 
   const result = await runWidget(widget, c.req.valid("json").params, {
     location: resolveLocation(getCookie(c, LOCATION_COOKIE), c.req.raw.headers),
