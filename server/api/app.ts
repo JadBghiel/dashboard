@@ -85,6 +85,9 @@ import { widgetData, widgetDataRoute } from "./routes/widgets";
 
 import { auth } from "@/lib/auth";
 
+import { sessionMiddleware } from "./session-middleware";
+import { subscribe, subscribeRoute, unsubscribe, unsubscribeRoute } from "./routes/subscriptions";
+
 // basePath bc the next catch all hands us the full url, /api included
 const app = new OpenAPIHono({
   // 1 place for every zod failure, so a bad body reads like any other error
@@ -105,6 +108,7 @@ const app = new OpenAPIHono({
 
 app.onError(onError);
 app.notFound(notFound);
+app.use("*", sessionMiddleware);
 // better-auth owns everything under /auth: sign-up, sign-in, verify-email, oauth callbacks later
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
@@ -145,6 +149,8 @@ const routes = app
   .openapi(best2048GetRoute, best2048Get)
   .openapi(best2048PutRoute, best2048Put)
   .openapi(servicesRoute, listServices)
+  .openapi(subscribeRoute, subscribe)
+  .openapi(unsubscribeRoute, unsubscribe)
   .openapi(getLayoutRoute, getLayout)
   .openapi(putLayoutRoute, putLayout)
   .openapi(deleteLayoutRoute, deleteLayout);
