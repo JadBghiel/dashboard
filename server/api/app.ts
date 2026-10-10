@@ -110,14 +110,16 @@ app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
 // before the routes, so a request over the limit never reaches an upstream. a full dashboard is
 // ~15 widget fetches, the timer and the refresh btns stay far under these
-// no request body is ever bigger than a few kb, a huge one is refused before it's read
-app.use(
-  "*",
-  bodyLimit({
-    maxSize: 64 * 1024,
-    onError: (c) =>
-      c.json<ApiError>({ code: "payload_too_large", message: "The request is too big." }, 413),
-  }),
+// no request body is ever bigger than a few kb, a huge one is refused before it's read. only on the
+// methods that carry a body: on a bodiless DELETE, bodyLimit rebuilds the request, and next's request
+// object doesnt survive that (every DELETE answered 500)
+const limitBody = bodyLimit({
+  maxSize: 64 * 1024,
+  onError: (c) =>
+    c.json<ApiError>({ code: "payload_too_large", message: "The request is too big." }, 413),
+});
+app.use("*", (c, next) =>
+  ["POST", "PUT", "PATCH"].includes(c.req.method) ? limitBody(c, next) : next(),
 );
 app.use("/widgets/*", rateLimit("widget", 150, 60));
 app.use("/tools/translate", rateLimit("translation", 30, 60));
