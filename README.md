@@ -65,21 +65,24 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
 
 ## How to use it
 
-1. **Open the dashboard.** Your widgets are grouped in three sections: Utility, News and Games.
-2. **Set your location** with the pin in the top bar: search a city, or use your device position
+1. **Create an account** on **Register**: name, username, email and a password of 12 characters or
+   more (common passwords are refused). Click the link in the confirmation email, and you are signed
+   in. Next time, log in with your username or your email. **Continue with Google** appears when the
+   server has a Google client.
+2. **Open the dashboard.** Your widgets are grouped in three sections: Utility, News and Games.
+   Without an account you see the default widgets, read-only.
+3. **Set your location** with the pin in the top bar: search a city, or use your device position
    (you see what it is used for before your browser asks). Or answer "yes" to the question on the
    dashboard to let us guess your city from your connection.
-3. **Configure a widget** with its gear: its refresh rate and its options. Some options are on the
+4. **Configure a widget** with its gear: its refresh rate and its options. Some options are on the
    card itself: heart a stock or a coin, pick a currency, a language or a TV channel.
-4. **Arrange the page** with **Edit layout**: drag a card, or tab to it and use Space and the arrows.
+5. **Arrange the page** with **Edit layout**: drag a card, or tab to it and use Space and the arrows.
    The cross hides a card. **Add widgets** turns any widget on or off.
-5. **Settings & privacy** (sidebar): location, text size, theme, download your data, and the privacy
-   notice.
-6. **Services** (sidebar): what each service needs, and the form for your own API key.
+6. **Settings & privacy** (sidebar): location, text size, theme, download your data, delete your
+   account (confirmed by an email link), and the privacy notice.
+7. **Services** (sidebar): what each service needs, and the form for your own API key.
 
-> **Accounts:** sign-up with email confirmation and sign-in are being merged (`feat/accounts`).
-> Until then the online version shows the default dashboard, read-only. Locally, the per-user
-> features work with the seeded demo account (see below).
+8. **Log out** from your name at the bottom of the sidebar.
 
 ## Screenshots
 
@@ -95,6 +98,10 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
   <tr>
     <td width="50%"><img src="assets/screenshots/add-widgets.png" alt="Add widgets window with an on/off switch per widget"><br><sub><b>Add widgets:</b> one switch per widget, settings kept</sub></td>
     <td width="50%"><img src="assets/screenshots/services.png" alt="Services page with each service's status and the own key form"><br><sub><b>Services:</b> what each one needs, and your own API key</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/log-in.png" alt="Log in page"><br><sub><b>Log in:</b> with your username or your email</sub></td>
+    <td width="50%"><img src="assets/screenshots/register.png" alt="Register page"><br><sub><b>Register:</b> confirmed by an email link</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="assets/screenshots/settings.png" alt="Settings and privacy page"><br><sub><b>Settings &amp; privacy:</b> location, display, download your data</sub></td>
@@ -113,12 +120,16 @@ docker-compose up
 The app answers on http://localhost:8080 and the database migrations run on startup.
 `http://localhost:8080/about.json` lists the services and widgets.
 
+To create an account, register at http://localhost:8080/register. The confirmation email doesn't
+leave your machine: open the inbox at **http://localhost:8025** (Mailpit) and click the link.
+
 Optional, from the shell or a root `.env`:
 
-| Variable          | What for                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| `FINNHUB_API_KEY` | Live stock prices (free key at finnhub.io). Without it, the stock card says so.               |
-| `CREDENTIALS_KEY` | Encrypts the keys users save (`openssl rand -base64 32`). A public demo key is used if empty. |
+| Variable                                   | What for                                                                                      |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `FINNHUB_API_KEY`                          | Live stock prices (free key at finnhub.io). Without it, the stock card says so.               |
+| `CREDENTIALS_KEY`                          | Encrypts the keys users save (`openssl rand -base64 32`). A public demo key is used if empty. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | "Continue with Google". Without them, the button is hidden.                                   |
 
 ### For development
 
@@ -130,8 +141,9 @@ npm run setup
 npm run dev
 ```
 
-`npm run setup` creates `.env.local` (with a fresh `CREDENTIALS_KEY`), starts Postgres in Docker,
-applies the migrations and seeds two accounts. It is safe to rerun, and it is also how you start the
+`npm run setup` creates `.env.local` (with a fresh `CREDENTIALS_KEY`), starts Postgres and Mailpit in
+Docker, applies the migrations and seeds two accounts. The emails the app sends locally (account
+confirmation, account deletion) land in the Mailpit inbox at http://localhost:8025. It is safe to rerun, and it is also how you start the
 database again after a reboot. To stop it: `docker compose -f docker-compose.dev.yml down`.
 
 | Account | Email                  | Password              |
@@ -139,8 +151,8 @@ database again after a reboot. To stop it: `docker compose -f docker-compose.dev
 | Admin   | `admin@dashboard.test` | `dashboard-admin-dev` |
 | Demo    | `demo@dashboard.test`  | `dashboard-demo-dev`  |
 
-These accounts only exist in your local database. The seed refuses to run against anything else.
-With `DEV_USER_EMAIL=demo@dashboard.test` in `.env.local`, every local request acts as the demo user.
+These accounts only exist in your local database, already confirmed. Log in with their username
+(`admin`, `demo`) or their email. The seed refuses to run against anything else.
 
 The API lives under `/api`. Its reference is at http://localhost:3000/api/docs and the OpenAPI
 document at http://localhost:3000/api/openapi.json, both generated from the schemas the server
@@ -154,7 +166,17 @@ npm run start
 ```
 
 The server refuses to start without a valid `CREDENTIALS_KEY`. On Vercel, the migrations run before
-each production build (`vercel.json`).
+each production build (`vercel.json`). The production environment needs:
+
+| Variable                                   | What for                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| `DATABASE_URL`, `DATABASE_URL_UNPOOLED`    | Postgres (set by the Neon integration)                            |
+| `BETTER_AUTH_SECRET`                       | Signs the sessions (`openssl rand -base64 32`)                    |
+| `BETTER_AUTH_URL`                          | The site's own URL, like `https://dashboard-jad-nico.vercel.app`  |
+| `CREDENTIALS_KEY`                          | Encrypts the users' API keys. Never change it once set            |
+| `SENDGRID_API_KEY`, `MAIL_FROM`            | Sends the confirmation emails. `MAIL_FROM` is the verified sender |
+| `FINNHUB_API_KEY`                          | The app's own stock market key                                    |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional, "Continue with Google"                                  |
 
 ### Tests
 
