@@ -84,7 +84,6 @@ import { widgetData, widgetDataRoute } from "./routes/widgets";
 import { auth } from "@/lib/auth";
 
 import { sessionMiddleware } from "./session-middleware";
-import { subscribe, subscribeRoute, unsubscribe, unsubscribeRoute } from "./routes/subscriptions";
 
 // basePath bc the next catch all hands us the full url, /api included
 const app = new OpenAPIHono({
@@ -148,8 +147,6 @@ const routes = app
   .openapi(best2048GetRoute, best2048Get)
   .openapi(best2048PutRoute, best2048Put)
   .openapi(servicesRoute, listServices)
-  .openapi(subscribeRoute, subscribe)
-  .openapi(unsubscribeRoute, unsubscribe)
   // the order route before the :id ones, so "order" isnt read as an id
   .openapi(reorderInstancesRoute, reorderInstancesHandler)
   .openapi(listInstancesRoute, listInstancesHandler)

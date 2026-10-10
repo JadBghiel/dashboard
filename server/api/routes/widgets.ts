@@ -11,7 +11,6 @@ import type { ServiceDef, WidgetCredentials } from "@/server/registry/define";
 import { registry } from "@/server/registry";
 import { runWidget } from "@/server/registry/run";
 import { errorResponse } from "../errors";
-import { requireSubscription } from "../subscription-guard";
 
 export const widgetDataRoute = createRoute({
   method: "post",
