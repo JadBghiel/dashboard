@@ -17,6 +17,8 @@ type User = {
   role: string | null;
   banned: boolean | null;
   banReason: string | null;
+  // the services the user subscribed to w/ their own key
+  subscriptions: number;
 };
 
 export function UsersTable({
@@ -31,70 +33,56 @@ export function UsersTable({
   const [banningId, setBanningId] = useState<string | null>(null);
   const [banReason, setBanReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // the user whose action is being saved, their buttons wait so a double click cant send it twice
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const adminCount = users.filter((u) => u.role === "admin" && !u.banned).length;
-
-  const filtered = users.filter(
-    (u) =>
-      u.email.toLowerCase().includes(query.toLowerCase()) ||
-      (u.username ?? "").toLowerCase().includes(query.toLowerCase()),
+  const q = query.trim().toLowerCase();
+  const filtered = users.filter((u) =>
+    [u.name, u.email, u.username ?? ""].some((field) => field.toLowerCase().includes(q)),
   );
 
-  async function toggleRole(user: User) {
+  // runs 1 admin action, the server has the final say on every rule (lib/auth.ts)
+  async function run(user: User, action: () => Promise<{ error: { message?: string } | null }>) {
     setError(null);
-    const nextRole = user.role === "admin" ? "user" : "admin";
-
-    if (nextRole === "user" && user.role === "admin" && adminCount <= 1) {
-      setError("Can't demote the last admin.");
-      return;
-    }
-
-    const { error } = await authClient.admin.setRole({
-      userId: user.id,
-      role: nextRole,
-    });
+    setBusyId(user.id);
+    const { error } = await action();
+    setBusyId(null);
     if (error) {
       setError(error.message ?? "Something went wrong.");
-      return;
+      return false;
     }
     router.refresh();
+    return true;
+  }
+
+  async function toggleRole(user: User) {
+    const nextRole = user.role === "admin" ? "user" : "admin";
+    await run(user, () => authClient.admin.setRole({ userId: user.id, role: nextRole }));
   }
 
   async function unban(user: User) {
-    setError(null);
-    const { error } = await authClient.admin.unbanUser({ userId: user.id });
-    if (error) {
-      setError(error.message ?? "Something went wrong.");
-      return;
-    }
-    router.refresh();
+    await run(user, () => authClient.admin.unbanUser({ userId: user.id }));
   }
 
   async function confirmBan(user: User) {
-    setError(null);
-
-    if (user.role === "admin" && adminCount <= 1) {
-      setError("Can't ban the last admin.");
-      return;
+    const banned = await run(user, () =>
+      authClient.admin.banUser({
+        userId: user.id,
+        banReason: banReason.trim() || "No reason given",
+      }),
+    );
+    if (banned) {
+      setBanningId(null);
+      setBanReason("");
     }
-
-    const { error } = await authClient.admin.banUser({
-      userId: user.id,
-      banReason: banReason || "No reason given",
-    });
-    if (error) {
-      setError(error.message ?? "Something went wrong.");
-      return;
-    }
-    setBanningId(null);
-    setBanReason("");
-    router.refresh();
   }
 
   return (
     <div className="space-y-4">
       <Input
-        placeholder="Search by email or username..."
+        type="search"
+        aria-label="Search users"
+        placeholder="Search by name, email or username..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="max-w-sm"
@@ -117,18 +105,26 @@ export function UsersTable({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{user.name}</span>
-                  <span className="text-muted-foreground text-sm">@{user.username ?? "—"}</span>
+                  {/* google accounts have no username */}
+                  {user.username && (
+                    <span className="text-muted-foreground text-sm">@{user.username}</span>
+                  )}
                   {user.role === "admin" && <Badge variant="secondary">Admin</Badge>}
                   {!user.emailVerified && <Badge variant="outline">Unverified</Badge>}
                   {user.banned && <Badge variant="destructive">Banned</Badge>}
                 </div>
-                <p className="text-muted-foreground text-sm">{user.email}</p>
+                <p className="text-muted-foreground text-sm">
+                  {user.email} ·{" "}
+                  {user.subscriptions === 1
+                    ? "1 subscription"
+                    : `${user.subscriptions} subscriptions`}
+                </p>
                 {user.banned && user.banReason && (
                   <p className="text-muted-foreground text-xs">Reason: {user.banReason}</p>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <fieldset disabled={busyId === user.id} className="flex items-center gap-2">
                 {!isSelf && (
                   <Button variant="outline" size="sm" onClick={() => toggleRole(user)}>
                     {user.role === "admin" ? "Demote" : "Promote"}
@@ -143,6 +139,7 @@ export function UsersTable({
                   banningId === user.id ? (
                     <div className="flex items-center gap-2">
                       <Input
+                        aria-label={`Reason for banning ${user.name}`}
                         placeholder="Reason"
                         value={banReason}
                         onChange={(e) => setBanReason(e.target.value)}
@@ -168,7 +165,7 @@ export function UsersTable({
                     </Button>
                   )
                 ) : null}
-              </div>
+              </fieldset>
             </div>
           );
         })}

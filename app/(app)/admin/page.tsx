@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { isAdmin, currentUserId } from "@/server/auth/current-user";
 import { db } from "@/server/db";
-import { UsersTable } from "@/components/admin/users-table"
+import { UsersTable } from "@/components/admin/users-table";
 
 export const metadata: Metadata = { title: "Admin" };
 
@@ -23,6 +23,8 @@ export default async function AdminPage() {
         role: true,
         banned: true,
         banReason: true,
+        // a subscription is a saved key (#18), linked oauth accounts join it w/ #19
+        _count: { select: { credentials: true } },
       },
       orderBy: { createdAt: "asc" },
     }),
@@ -36,7 +38,10 @@ export default async function AdminPage() {
         <p className="text-muted-foreground text-sm">manage users, roles and bans</p>
       </div>
 
-      <UsersTable users={users} currentUserId={myUserId} />
+      <UsersTable
+        users={users.map(({ _count, ...u }) => ({ ...u, subscriptions: _count.credentials }))}
+        currentUserId={myUserId}
+      />
     </div>
   );
 }

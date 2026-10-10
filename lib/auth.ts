@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, username } from "better-auth/plugins";
 import { APIError } from "better-auth/api";
-import { createAuthMiddleware } from "better-auth/api";
+import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { db } from "@/server/db";
 import { sendMail } from "./email";
 import { weakPasswordReason } from "./common-passwords";
@@ -36,6 +36,25 @@ function mailInBackground(to: string, subject: string, html: string) {
     after(send);
   } catch {
     void send();
+  }
+}
+
+//admin plugin endpoints that can take the admin role away from someone. the admin page hides the
+//buttons on your own row, but only in the browser: anyone w/ an admin session can call these directly
+const ADMIN_ROLE_CHANGES = new Set(["/admin/set-role", "/admin/update-user"]);
+
+//an admin can't demote themselves. banning or removing yourself is already refused by the plugin.
+//so every admin action targets another admin, and the app can never end up w/o one
+async function refuseSelfDemotion(ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]) {
+  const role =
+    ctx.path === "/admin/set-role"
+      ? (ctx.body?.role as string | undefined)
+      : (ctx.body?.data as { role?: string } | undefined)?.role;
+  if (role === undefined || role === "admin") return;
+  //no session = not an admin, the plugin itself answers that
+  const session = await getSessionFromCtx(ctx);
+  if (session && ctx.body?.userId === session.user.id) {
+    throw new APIError("FORBIDDEN", { message: "You can't remove your own admin role." });
   }
 }
 
@@ -100,6 +119,7 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ADMIN_ROLE_CHANGES.has(ctx.path)) await refuseSelfDemotion(ctx);
       //we check if the password they used to register is too easy to guess
       if (ctx.path === "/sign-up/email") {
         //we can't put it in the databaseHooks cuz they only see the password hash
