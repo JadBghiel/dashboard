@@ -89,7 +89,7 @@ export function PrivacyNotice() {
           </li>
           <li>
             <span className="text-foreground font-medium">Your widgets</span>: which ones you use,
-            their options, refresh rate, order, and which ones are hidden.
+            their options, refresh rate and order.
           </li>
         </ul>
         <p>

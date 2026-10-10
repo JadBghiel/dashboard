@@ -2,7 +2,8 @@
 
 /** the settings window behind each card's gear: the refresh rate, and every option the card has no
  * control of its own for. the fields come from the widget's params in the registry (the same list
- * about.json shows), so a new option on a widget gets its field w/o any change here */
+ * about.json shows), so a new option on a widget gets its field w/o any change here. "add widgets"
+ * uses the same form to configure a widget before adding it */
 
 import { useState } from "react";
 
@@ -15,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -24,10 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import type { ParamSpec } from "@/server/registry/define";
 
-import { useInstance } from "./instance-context";
+import { useInstance, type ExtraSettings, type WidgetSpec } from "./instance-context";
+import { Field } from "./param-field";
 
 // the choices offered, a widget only shows the ones at or above its minimum
 const RATES = [60, 120, 300, 600, 1800, 3600, 21_600, 86_400];
@@ -37,9 +36,6 @@ function rateLabel(sec: number) {
   if (sec < 86_400) return `Every ${sec / 3600} h`;
   return "Once a day";
 }
-
-// "show_wind" -> "Show wind"
-const labelOf = (name: string) => name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
 
 export function SettingsDialog({
   open,
@@ -58,17 +54,52 @@ export function SettingsDialog({
           <DialogDescription>Saved to your account, the same on every device.</DialogDescription>
         </DialogHeader>
         {/* keyed so every opening starts from what is saved, a cancelled draft doesnt linger */}
-        {open && <Form key={ctx.instance.id} onDone={() => onOpenChange(false)} />}
+        {open && (
+          <WidgetForm
+            key={ctx.instance.id}
+            spec={ctx.spec}
+            notInSettings={ctx.notInSettings}
+            ExtraSettings={ctx.ExtraSettings}
+            initialParams={ctx.instance.params}
+            initialRefresh={ctx.instance.refreshSec}
+            submitLabel="Save"
+            onSubmit={(params, refreshSec) => ctx.save({ params, refreshSec })}
+            onCancel={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function Form({ onDone }: { onDone: () => void }) {
-  const ctx = useInstance()!;
-  const { instance, spec, notInSettings, ExtraSettings } = ctx;
-  const [params, setParams] = useState(instance.params);
-  const [refreshSec, setRefreshSec] = useState(instance.refreshSec);
+/** every param at its default, what a new widget's form starts from */
+export const defaultParams = (spec: WidgetSpec) =>
+  Object.fromEntries(
+    spec.params.filter((p) => p.default !== undefined).map((p) => [p.name, p.default]),
+  );
+
+export function WidgetForm({
+  spec,
+  notInSettings,
+  ExtraSettings,
+  initialParams,
+  initialRefresh,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  spec: WidgetSpec;
+  notInSettings: readonly string[];
+  ExtraSettings?: ExtraSettings;
+  initialParams: Record<string, unknown>;
+  initialRefresh: number;
+  submitLabel: string;
+  // resolves to an error message, or null once saved, the form then calls onCancel to close
+  onSubmit: (params: Record<string, unknown>, refreshSec: number) => Promise<string | null>;
+  onCancel: () => void;
+}) {
+  const [params, setParams] = useState(initialParams);
+  const [refreshSec, setRefreshSec] = useState(initialRefresh);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,10 +112,10 @@ function Form({ onDone }: { onDone: () => void }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const err = await ctx.save({ params, refreshSec });
+    const err = await onSubmit(params, refreshSec);
     setSaving(false);
     if (err) setError(err);
-    else onDone();
+    else onCancel();
   }
 
   return (
@@ -122,80 +153,13 @@ function Form({ onDone }: { onDone: () => void }) {
         </p>
       )}
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onDone}>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
         <Button type="submit" disabled={saving}>
-          {saving ? "Saving…" : "Save"}
+          {saving ? "Saving…" : submitLabel}
         </Button>
       </DialogFooter>
     </form>
-  );
-}
-
-/** 1 field per param kind: text, number, select or switch */
-function Field({
-  spec,
-  value,
-  onChange,
-}: {
-  spec: ParamSpec;
-  value: unknown;
-  onChange: (v: unknown) => void;
-}) {
-  const id = `param-${spec.name}`;
-  const label = labelOf(spec.name);
-
-  if (spec.kind === "boolean") {
-    return (
-      <div className="flex items-center justify-between gap-4">
-        <Label htmlFor={id}>{label}</Label>
-        <Switch id={id} checked={value === true} onCheckedChange={onChange} />
-      </div>
-    );
-  }
-
-  if (spec.kind === "enum" && spec.options) {
-    return (
-      <div className="space-y-1.5">
-        <Label htmlFor={id}>{label}</Label>
-        <Select value={String(value ?? spec.default ?? "")} onValueChange={onChange}>
-          <SelectTrigger id={id} className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {spec.options.map((o) => (
-              <SelectItem key={o} value={o}>
-                {labelOf(o)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {spec.kind === "integer" ? (
-        <Input
-          id={id}
-          type="number"
-          inputMode="numeric"
-          min={spec.min}
-          max={spec.max}
-          value={typeof value === "number" ? value : ""}
-          // empty clears it (null), the widget default applies again
-          onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        />
-      ) : (
-        <Input
-          id={id}
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
-    </div>
   );
 }
