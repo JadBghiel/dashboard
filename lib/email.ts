@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 
 type MailInput = {
   to: string;
@@ -22,22 +22,20 @@ async function sendViaNodemailer(input: MailInput) {
   });
 }
 
-async function sendViaResend(input: MailInput) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const { error } = await resend.emails.send({
-    from: process.env.MAIL_FROM ?? "Dashboard <onboarding@resend.dev>",
+async function sendViaSendGrid(input: MailInput) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
+
+  await sgMail.send({
+    from: process.env.MAIL_FROM as string,
     to: input.to,
     subject: input.subject,
     html: input.html,
   });
-
-  if (error)
-    throw new Error(`resend: ${error.message}`);
 }
 
 export async function sendMail(input: MailInput) {
-  if (process.env.RESEND_API_KEY) {
-    await sendViaResend(input);
+  if (process.env.SENDGRID_API_KEY) {
+    await sendViaSendGrid(input);
     return;
   }
   await sendViaNodemailer(input);
