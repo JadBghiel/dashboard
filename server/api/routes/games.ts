@@ -179,7 +179,9 @@ function fail(err: unknown) {
   if (err instanceof WidgetError) {
     return { status: 422 as const, body: { code: "widget_error", message: err.message } };
   }
-  console.error("game request failed", err);
+  // the page went away mid request, nobody is waiting and nothing broke
+  if (!(err instanceof Error && err.name === "ResponseAborted"))
+    console.error("game request failed", err);
   return {
     status: 502 as const,
     body: { code: "upstream_error", message: "The game is unavailable right now." },
