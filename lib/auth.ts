@@ -27,10 +27,18 @@ export const googleEnabled = Boolean(
 //that timing difference leaks which emails exist. after() and not a bare promise bc on vercel the
 //function can be frozen once the response is out, a mail still in flight would never leave. outside
 //a request (the tests) there is no after(), the plain promise is enough there
+//only what explains the failure. the raw error of the sendgrid client carries the request config,
+//its Authorization header included, logging it as is would print the api key in the logs
+function mailError(err: unknown) {
+  const e = err as { code?: number | string; message?: string; response?: { body?: unknown } };
+  const detail = e.response?.body ? ` ${JSON.stringify(e.response.body)}` : "";
+  return `${e.code ?? ""} ${e.message ?? String(err)}${detail}`.trim();
+}
+
 function mailInBackground(to: string, subject: string, html: string) {
   const send = () =>
     sendMail({ to, subject, html }).catch((err) => {
-      console.error(`Failed to send "${subject}" mail:`, err);
+      console.error(`Failed to send "${subject}" mail: ${mailError(err)}`);
     });
   try {
     after(send);
