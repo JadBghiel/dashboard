@@ -1,11 +1,14 @@
 "use client";
 
-/** fetches 1 widget payload through the api, every card uses this, and its refresh() is what the
- * Timer (#25) will call on a schedule after */
+/** fetches 1 widget payload through the api, every card uses this. on the dashboard it registers
+ * its refresh() w/ the Timer at the widget's rate, so the card refreshes on its own */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
+
+import { useInstance } from "./instance-context";
+import { useTimer } from "./timer-provider";
 
 type Result = { data: unknown } | { error: string };
 
@@ -70,10 +73,31 @@ export function useWidgetData<T>(
     return () => ctrl.abort();
   }, [start]);
 
+  const timer = useTimer();
+  // 2 cards can show the same widget w/ the same params, each one needs its own timer slot
+  const slot = useId();
+
   const refresh = useCallback(() => {
     setRefreshing(true);
     start();
-  }, [start]);
+    // a manual refresh restarts the countdown, a timer refresh lands here too, harmless
+    timer?.schedule.reset(slot);
+  }, [start, timer, slot]);
+
+  // the timer keeps a stable function and calls the latest refresh through the ref
+  const latestRefresh = useRef(refresh);
+  useEffect(() => {
+    latestRefresh.current = refresh;
+  }, [refresh]);
+
+  // the saved widget's own rate on the dashboard, the widget default otherwise
+  const instanceRate = useInstance()?.instance.refreshSec;
+
+  useEffect(() => {
+    const everySec = instanceRate ?? timer?.rates[`${service}/${widget}`];
+    if (!timer || !everySec) return;
+    return timer.schedule.add(slot, () => latestRefresh.current(), everySec);
+  }, [timer, slot, service, widget, instanceRate]);
 
   return {
     data: state.data,
