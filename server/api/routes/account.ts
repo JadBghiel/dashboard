@@ -43,7 +43,6 @@ export const exportData: RouteHandler<typeof exportRoute> = async (c) => {
         params: true,
         refreshSec: true,
         position: true,
-        hidden: true,
         createdAt: true,
       },
     }),

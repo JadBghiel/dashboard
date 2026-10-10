@@ -50,7 +50,6 @@ const SELECT = {
   params: true,
   refreshSec: true,
   position: true,
-  hidden: true,
 } as const;
 
 function widgetOf(serviceId: string, widgetId: string) {
@@ -59,8 +58,8 @@ function widgetOf(serviceId: string, widgetId: string) {
   return widget;
 }
 
-/** requireSubscription (#18): a widget of a locked service can't be put on the dashboard, neither
- * added nor switched back on. one already there stays, its card says how to unlock it */
+/** requireSubscription (#18): a widget of a locked service can't be added to the dashboard. one
+ * already there stays, its card says how to unlock it */
 async function checkSubscribed(userId: string, serviceId: string) {
   const service = registry.getService(serviceId);
   if (!service) return;
@@ -104,7 +103,6 @@ export function defaultInstances() {
       params: parseParams(widget, params ?? {}) as Record<string, unknown>,
       refreshSec: widget.refresh.default,
       position,
-      hidden: false,
     };
   });
 }
@@ -138,6 +136,10 @@ export async function listInstances(userId: string) {
   return byPosition(userId);
 }
 
+// a widget's starting options beyond its own defaults (crypto starts w/ 8 coins, not none)
+const STARTING_PARAMS = new Map(DEFAULT_WIDGETS.map(([s, w, p]) => [`${s}/${w}`, p ?? {}]));
+
+/** add a widget. any number of the same widget, each w/ its own options and refresh rate */
 export async function createInstance(
   userId: string,
   input: { serviceId: string; widgetId: string; params?: unknown; refreshSec?: number },
@@ -157,7 +159,10 @@ export async function createInstance(
       userId,
       serviceId: input.serviceId,
       widgetId: input.widgetId,
-      params: parseParams(widget, input.params ?? {}),
+      params: parseParams(widget, {
+        ...STARTING_PARAMS.get(`${input.serviceId}/${input.widgetId}`),
+        ...(input.params as object),
+      }),
       refreshSec: checkRefresh(widget, input.refreshSec ?? widget.refresh.default),
       position: (last?.position ?? -1) + 1,
     },
@@ -165,17 +170,15 @@ export async function createInstance(
   });
 }
 
-/** params are merged into the saved ones, so a card control can send only what it changed. hidden
- * is the on/off switch of "add widgets" */
+/** params are merged into the saved ones, so a card control can send only what it changed */
 export async function updateInstance(
   userId: string,
   id: string,
-  patch: { params?: Record<string, unknown>; refreshSec?: number; hidden?: boolean },
+  patch: { params?: Record<string, unknown>; refreshSec?: number },
 ) {
   const row = await db.widgetInstance.findFirst({ where: { id, userId }, select: SELECT });
   if (!row) throw new InstanceError(404, "That widget isn't on your dashboard.");
   const widget = widgetOf(row.serviceId, row.widgetId);
-  if (patch.hidden === false && row.hidden) await checkSubscribed(userId, row.serviceId);
   // null clears an option, so an optional one (the news language) can go back to automatic
   const merged = patch.params && { ...(row.params as object), ...patch.params };
   if (merged)
@@ -185,7 +188,7 @@ export async function updateInstance(
     patch.refreshSec === undefined ? undefined : checkRefresh(widget, patch.refreshSec);
   return db.widgetInstance.update({
     where: { id: row.id },
-    data: { params, refreshSec, hidden: patch.hidden },
+    data: { params, refreshSec },
     select: SELECT,
   });
 }
