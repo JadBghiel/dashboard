@@ -31,9 +31,9 @@ model User {
   sessions        Session[]
   accounts        Account[]
 
-  subscriptions ServiceSubscription[]
-  credentials   Credential[]
-  widgets       WidgetInstance[]
+  credentials Credential[]
+  widgets     WidgetInstance[]
+  settings    UserSettings?
 
   @@unique([email])
   @@unique([username])
@@ -73,8 +73,6 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  subscriptions ServiceSubscription[]
-
   @@index([userId])
   @@map("account")
 }
@@ -92,34 +90,8 @@ model Verification {
 }
 
 // ---- ours ----
-// service, widget and size ids are plain strings on purpose. the registry in code decides what
+// service and widget ids are plain strings on purpose. the registry in code decides what
 // exists (#14), a db enum would be a 2nd list to keep in sync every time a widget is added
-
-enum SubscriptionStatus {
-  active
-  needs_reauth
-  revoked
-
-  @@map("subscription_status")
-}
-
-model ServiceSubscription {
-  id        String             @id @default(cuid())
-  userId    String
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceId String
-  status    SubscriptionStatus @default(active)
-  // set for oauth services only, the tokens stay on the better-auth account row
-  accountId String?
-  account   Account?           @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-
-  @@unique([userId, serviceId])
-  // postgres doesnt index fk columns by itself, and unlinking an account scans this for SetNull
-  @@index([accountId])
-  @@map("service_subscription")
-}
 
 // a users own api key, AES-256-GCM (#17). not readable back through the api obviosuly
 model Credential {
@@ -148,9 +120,10 @@ model WidgetInstance {
   // parsed w/ the widget zod schema before every insert and update
   params     Json
   refreshSec Int
-  size       String
   // not unique on purpose, rewritted when reorder
   position   Int
+  // switched off in "add widgets": kept w/ its settings, just not on the dash
+  hidden     Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -158,23 +131,35 @@ model WidgetInstance {
   @@map("widget_instance")
 }
 
-// L2 of the upstream cache, behind the in memory one, keyed by the widget params and not the
-// instance, so 2 instances w/ the same config share 1 row, expired rows are kept on purpose, they
-// are the last good payload served when the upstream is down
+// the user's own settings, in the db so they follow the account on every device (mid term note).
+// the widgets' own options live on WidgetInstance, this is what belongs to the user
+model UserSettings {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // the city the user picked, null = not set, the ip guess or madrid then
+  locationName    String?
+  lat             Float?
+  lon             Float?
+  country         String?
+  // gdpr: the ip guess is only used once the user said yes. null = not asked yet
+  locationConsent Boolean?
+  // small | normal | large
+  textSize        String   @default("normal")
+  // system | light | dark
+  theme           String   @default("system")
+  updatedAt       DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+// the widget cache shared by every server copy, behind each copy's memory (server/widget-cache.ts).
+// keyed by the widget + a hash of what its answer depends on (params, location, day), not by user,
+// so the same config shares 1 row. expired rows are kept on purpose: the last good answer when the
+// upstream is down
 model CachedResponse {
   key       String   @id
   payload   Json
   expiresAt DateTime
 
   @@map("cached_response")
-}
-
-// cookie/crumb style state for keyless upstreams (yahoo), so a cold lambda reuses it instead of
-// redoing the handshake on every request
-model UpstreamSession {
-  provider  String   @id
-  blob      Json
-  expiresAt DateTime
-
-  @@map("upstream_session")
 }
