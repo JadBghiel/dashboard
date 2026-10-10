@@ -89,7 +89,34 @@ export const auth = betterAuth({
       },
     },
   },
+  account: {
+    accountLinking: {
+      //google signing in w/ the email of an account that was never confirmed: google just proved
+      //the email is theirs, so the account is linked instead of refused. the hijack this default
+      //protects against (someone pre-registering your email w/ their password) is closed by the
+      //account hook below, which drops that password on the link
+      requireLocalEmailVerified: false,
+    },
+  },
   databaseHooks: {
+    account: {
+      create: {
+        after: async (account) => {
+          if (account.providerId === "credential") return;
+          const user = await db.user.findUnique({
+            where: { id: account.userId },
+            select: { emailVerified: true },
+          });
+          //linked to an unconfirmed account: whoever set its password never proved the email,
+          //their password goes, the owner logs in w/ google (better-auth marks the email verified)
+          if (user && !user.emailVerified) {
+            await db.account.deleteMany({
+              where: { userId: account.userId, providerId: "credential" },
+            });
+          }
+        },
+      },
+    },
     //this runs before better-auth inserts a new user row
     user: {
       create: {

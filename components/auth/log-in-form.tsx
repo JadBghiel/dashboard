@@ -8,11 +8,18 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { GoogleButton } from "./google-button";
 
-export function LogInForm({ googleEnabled }: { googleEnabled: boolean }) {
+export function LogInForm({
+  googleEnabled,
+  initialError = null,
+}: {
+  googleEnabled: boolean;
+  // why the last google sign in was refused, from ?error= on the page
+  initialError?: string | null;
+}) {
   const router = useRouter();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
