@@ -1,4 +1,4 @@
-/** the preference cookies (location, watchlist, news prefs, game progress). httpOnly so page js
+/** the cookies a visitor w/o an account gets (location, its consent, game progress). httpOnly so page js
  * never touches them, lax so they ride along on normal navigation, and secure only over https bc
  * docker serves plain http on localhost and a secure cookie would never come back there */
 
@@ -6,7 +6,7 @@ import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { z } from "zod";
 
-export const PREF_MAX_AGE = 60 * 60 * 24 * 365;
+const PREF_MAX_AGE = 60 * 60 * 24 * 365;
 
 export const prefCookie = (url: string) =>
   ({
@@ -19,7 +19,7 @@ export const prefCookie = (url: string) =>
 
 /** a cookie value is user controlled: anything that doesnt parse against the schema is null, never
  * thrown. raw strings come in url encoded or not depending on who reads them */
-export function parseJsonCookie<S extends z.ZodType>(
+function parseJsonCookie<S extends z.ZodType>(
   raw: string | undefined,
   schema: S,
 ): z.infer<S> | null {

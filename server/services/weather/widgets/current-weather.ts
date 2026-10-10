@@ -35,6 +35,7 @@ export type CurrentWeatherPayload = z.infer<typeof CurrentWeatherPayload>;
 
 export const currentWeatherWidget = defineWidget({
   id: "current_weather",
+  usesLocation: true,
   name: "Weather",
   description: "Current conditions and the next days, for a city or for where you are",
   params: z.object({
@@ -44,7 +45,6 @@ export const currentWeatherWidget = defineWidget({
     // 0 hides the strip, 7 is as far as openmeteo stays useful
     days: z.number().int().min(0).max(7).default(5),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 600, min: 300 },
   cache: { ttl: 600 },
   payload: CurrentWeatherPayload,

@@ -29,8 +29,6 @@ npm run setup
 npm run dev
 ```
 
-The app runs at http://localhost:3000
-
 `npm run setup` creates `.env.local`, starts Postgres in Docker, applies the migrations and seeds two
 accounts. It is safe to rerun, and it is also how you start the database again after a reboot. To stop
 it: `docker compose -f docker-compose.dev.yml down`.

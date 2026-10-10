@@ -38,6 +38,9 @@ services:
       # from the shell or a root .env (compose doesnt read .env.local). empty = the market card says
       # its not configured, everything else works
       FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
+      # encrypts the keys users save. the fallback is a public DEMO key so `docker-compose up` works w/
+      # nothing to set up, set your own from the shell or a root .env for anything real
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:-ZGVtby1vbmx5LWtleS1kby1ub3QtdXNlLWluLXByb2Q=}
     depends_on:
       db:
         condition: service_healthy

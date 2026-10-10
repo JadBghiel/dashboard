@@ -1,11 +1,8 @@
-/** the hearted coins, kept in an httpOnly cookie until accounts exist, same as the stock watchlist.
- * no cookie at all = the default list, an empty list = the user removed everything on purpose */
+/** the crypto watchlist rules: how many coins, the 8 a new user starts with, what a coin id looks
+ * like. the hearted list itself is the widget's coins param, saved w/ the instance */
 
 import { z } from "zod";
 
-import { parseJsonCookie } from "./cookies";
-
-export const CRYPTO_COOKIE = "dash_crypto";
 // coingecko takes them all in 1 call, the limit is only about the card staying readable
 export const CRYPTO_MAX = 15;
 
@@ -26,15 +23,3 @@ export const CoinId = z
   .trim()
   .toLowerCase()
   .regex(/^[a-z0-9][a-z0-9-]{1,59}$/, "not a coingecko id");
-
-const CoinList = z.array(z.string());
-
-export function parseCryptoList(raw: string | undefined): string[] {
-  const list = parseJsonCookie(raw, CoinList);
-  if (list === null) return DEFAULT_COINS;
-  const ids = list.flatMap((s) => {
-    const parsed = CoinId.safeParse(s);
-    return parsed.success ? [parsed.data] : [];
-  });
-  return [...new Set(ids)].slice(0, CRYPTO_MAX);
-}

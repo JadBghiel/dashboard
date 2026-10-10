@@ -1,12 +1,14 @@
-/** where the user is, decided in 1 place: the city they picked (cookie), else what vercel guessed
- * from their ip, else madrid. a cookie and not localStorage bc the server reads it on every request,
- * so every widget fetch already knows the location w/o the browser having to send it */
+/** where the user is, decided in 1 place: the city they picked, else what vercel guessed from their
+ * ip if they said yes to it (gdpr), else madrid. server/user-location.ts reads the saved city and the
+ * consent, from the db for a signed in user or from cookies for a visitor */
 
 import { z } from "zod";
 
 import type { UserLocation } from "./registry/define";
 
 export const LOCATION_COOKIE = "dash_location";
+// a visitor's answer to "guess my city from my connection?": "yes" or "no", absent = not asked
+export const CONSENT_COOKIE = "dash_location_consent";
 
 export const CountryCode = z
   .string()
@@ -73,18 +75,25 @@ const ipCountry = (headers: HeaderReader) => {
   return parsed.success ? parsed.data : null;
 };
 
-export function resolveLocation(savedRaw: string | undefined, headers: HeaderReader): UserLocation {
-  const saved = parseSavedLocation(savedRaw);
-  // a device position has no country (no reverse geocoding), the connection's is the best guess
+/** the saved city wins. the connection is only used w/ the user's consent: for the city when nothing
+ * is saved, and for the country of a device position, which comes w/o one (no reverse geocoding) */
+export function resolveSaved(
+  saved: SavedLocation | null,
+  headers: HeaderReader,
+  consent: boolean,
+): UserLocation {
   if (saved) {
     return {
       ...saved,
-      country: saved.country ?? ipCountry(headers) ?? DEFAULT_COUNTRY,
+      country: saved.country ?? (consent ? ipCountry(headers) : null) ?? DEFAULT_COUNTRY,
       source: "saved",
     };
   }
-  return ipLocation(headers) ?? DEFAULT_LOCATION;
+  return (consent && ipLocation(headers)) || DEFAULT_LOCATION;
 }
+
+export const parseConsent = (raw: string | undefined) =>
+  raw === "yes" ? true : raw === "no" ? false : null;
 
 function safeDecode(value: string) {
   try {

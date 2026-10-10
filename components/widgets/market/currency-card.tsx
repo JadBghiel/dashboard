@@ -22,9 +22,15 @@ import { WidgetCard } from "../widget-card";
 
 import { money } from "./parts";
 
-type Props = { from?: string; to?: string; amount?: number };
+type Props = {
+  from?: string;
+  to?: string;
+  amount?: number;
+  // saves an in-card change to the user's widget, set on the dashboard
+  onChange?: (patch: Record<string, unknown>) => void;
+};
 
-export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100 }: Props) {
+export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100, onChange }: Props) {
   const [base, setBase] = useState(from);
   const [targets, setTargets] = useState(to.split(","));
   const [value, setValue] = useState(String(amount));
@@ -46,6 +52,12 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100 }:
     if (!first) return;
     setTargets([base, ...rest]);
     setBase(first);
+    onChange?.({ from: first, to: [base, ...rest].join(",") });
+  }
+
+  function setList(next: string[]) {
+    setTargets(next);
+    onChange?.({ to: next.join(",") });
   }
 
   return (
@@ -73,10 +85,18 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100 }:
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              // saved once typing is done, the param is a whole number
+              onBlur={() => onChange?.({ amount: Math.round(qty) })}
               aria-label="Amount"
               className="tabular-nums"
             />
-            <Select value={base} onValueChange={setBase}>
+            <Select
+              value={base}
+              onValueChange={(v) => {
+                setBase(v);
+                onChange?.({ from: v });
+              }}
+            >
               <SelectTrigger aria-label="From currency" className="w-24">
                 <SelectValue />
               </SelectTrigger>
@@ -104,7 +124,7 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100 }:
                   variant="ghost"
                   size="icon"
                   className="size-7"
-                  onClick={() => setTargets((t) => t.filter((c) => c !== r.currency))}
+                  onClick={() => setList(targets.filter((c) => c !== r.currency))}
                   disabled={targets.length === 1}
                   aria-label={`Remove ${r.currency}`}
                 >
@@ -115,7 +135,7 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100 }:
           </ul>
 
           {addable.length > 0 && targets.length < 8 && (
-            <Select value="" onValueChange={(c) => setTargets((t) => [...t, c])}>
+            <Select value="" onValueChange={(c) => setList([...targets, c])}>
               <SelectTrigger size="sm" aria-label="Add a currency" className="w-full">
                 <Plus className="size-3.5" aria-hidden />
                 <SelectValue placeholder="Add a currency" />

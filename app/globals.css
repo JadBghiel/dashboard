@@ -136,4 +136,11 @@
   html {
     @apply font-sans;
   }
+  /* the text size setting: tailwind sizes and spacing are in rem, so the whole page scales with it */
+  html[data-text-size="small"] {
+    font-size: 87.5%;
+  }
+  html[data-text-size="large"] {
+    font-size: 112.5%;
+  }
 }

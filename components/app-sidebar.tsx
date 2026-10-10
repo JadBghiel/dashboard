@@ -37,7 +37,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Services", href: "/services", icon: Plug },
-  { title: "Settings", href: "/settings", icon: Settings },
+  { title: "Settings & privacy", href: "/settings", icon: Settings },
 ];
 
 // admin is filtered by role once better-auth lands, see #32

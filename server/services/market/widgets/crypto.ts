@@ -28,16 +28,14 @@ export const cryptoWidget = defineWidget({
   name: "Crypto",
   description: "Live crypto prices and their change over 24h",
   params: z.object({
-    // coingecko ids, comma separated. empty = the coins you hearted
+    // coingecko ids, comma separated, the hearted coins in the user's order
     coins: z.string().trim().max(400).default(""),
     currency: z.enum(["usd", "eur", "gbp"]).default("usd"),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 120, min: 60 },
   cache: { ttl: 60 },
   payload: CryptoPayload,
-  async fetch({ params, prefs, signal }) {
-    // empty = the coins the user hearted (the default 8 until they change it)
+  async fetch({ params, signal }) {
     const ids = params.coins
       ? [
           ...new Set(
@@ -48,7 +46,7 @@ export const cryptoWidget = defineWidget({
               .filter(Boolean),
           ),
         ]
-      : prefs.crypto;
+      : [];
     if (ids.length > CRYPTO_MAX) throw new WidgetError(`${CRYPTO_MAX} coins at most.`);
     if (!ids.every((id) => CoinId.safeParse(id).success)) {
       throw new WidgetError("Coins are CoinGecko ids, like bitcoin or ethereum.");

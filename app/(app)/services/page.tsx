@@ -1,107 +1,153 @@
-"use client";
+import { CircleCheck, KeyRound, Link2, TriangleAlert } from "lucide-react";
+import type { Metadata } from "next";
+import { headers } from "next/headers";
 
-import { useEffect, useState } from "react";
-
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OwnKeyForm } from "@/components/services/own-key-form";
+import { currentUserId } from "@/server/auth/current-user";
+import { listHints } from "@/server/credential-store";
+import { registry } from "@/server/registry";
+import type { ServiceCategory } from "@/server/registry/define";
 
-type Service = {
-  id: string;
-  name: string;
-  description: string;
-  auth: "none" | "api_key" | "oauth";
-  status: "ready" | "missing_key" | "needs_account";
-  subscribed: boolean;
-};
+export const metadata: Metadata = { title: "Services" };
 
-export default function ServicesPage() {
-  const [services, setServices] = useState<Service[] | null>(null);
-  const [keyInputFor, setKeyInputFor] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
-  const [error, setError] = useState<string | null>(null);
+const SECTIONS: { id: ServiceCategory; title: string }[] = [
+  { id: "utility", title: "Utility" },
+  { id: "news", title: "News" },
+  { id: "games", title: "Games" },
+];
 
-  async function refresh() {
-    const res = await fetch("/api/services");
-    const data = await res.json();
-    setServices(data.services);
+/** read on the server: whether a key service has a key, the user's own or the app's */
+function status(serviceId: string, ownKey: boolean) {
+  const def = registry.getService(serviceId);
+  if (def?.auth === "oauth") return "needs_account" as const;
+  if (ownKey) return "own_key" as const;
+  if (def?.auth === "api_key" && def.key && !process.env[def.key.env]) {
+    return "missing_key" as const;
   }
+  return "ready" as const;
+}
 
-  useEffect(() => {
-    refresh();
-  }, []);
-
-  async function subscribe(service: Service, key?: string) {
-    setError(null);
-    const res = await fetch(`/api/services/${service.id}/subscribe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(key ? { apiKey: key } : {}),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.message ?? "Something went wrong.");
-      return;
-    }
-    setKeyInputFor(null);
-    setApiKey("");
-    refresh();
+function StatusBadge({ value, auth }: { value: ReturnType<typeof status>; auth: string }) {
+  if (value === "needs_account") {
+    return (
+      <Badge variant="outline" className="gap-1">
+        <Link2 className="size-3" aria-hidden /> Needs an account
+      </Badge>
+    );
   }
-
-  async function unsubscribe(service: Service) {
-    setError(null);
-    await fetch(`/api/services/${service.id}/subscribe`, { method: "DELETE" });
-    refresh();
+  if (value === "own_key") {
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <KeyRound className="size-3 text-emerald-500" aria-hidden /> Ready, your own key
+      </Badge>
+    );
   }
+  if (value === "missing_key") {
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <TriangleAlert className="size-3" aria-hidden /> Key missing on the server
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="gap-1">
+      {auth === "api_key" ? (
+        <KeyRound className="size-3 text-emerald-500" aria-hidden />
+      ) : (
+        <CircleCheck className="size-3 text-emerald-500" aria-hidden />
+      )}
+      {auth === "api_key" ? "Ready, app key" : "Ready, nothing to set up"}
+    </Badge>
+  );
+}
 
-  if (!services) return <p className="text-muted-foreground text-sm">Loading...</p>;
+export default async function ServicesPage() {
+  const catalog = registry.catalog;
+  const userId = await currentUserId(await headers());
+  // the user's saved keys, as their last 4 characters
+  const hints = new Map(userId ? (await listHints(userId)).map((k) => [k.serviceId, k.hint]) : []);
+  const widgets = catalog.reduce((n, s) => n + s.widgets.length, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="space-y-1">
         <h1 className="font-heading text-2xl font-semibold tracking-tight">Services</h1>
-        <p className="text-muted-foreground text-sm">subscribe to unlock their widgets</p>
-      </div>
-
-      {error && (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
+        <p className="text-muted-foreground text-sm">
+          {catalog.length} services, {widgets} widgets. The ones that need a key or an account are
+          set up here.
         </p>
-      )}
-
-      <div className="space-y-3">
-        {services.map((service) => (
-          <div key={service.id} className="flex items-center justify-between rounded-lg border p-4">
-            <div>
-              <h2 className="font-medium">{service.name}</h2>
-              <p className="text-muted-foreground text-sm">{service.description}</p>
-            </div>
-
-            {service.auth === "none" ? (
-              <span className="text-muted-foreground text-sm">Always available</span>
-            ) : service.auth === "oauth" ? (
-              <span className="text-muted-foreground text-sm">OAuth not available yet</span>
-            ) : service.subscribed ? (
-              <Button variant="outline" onClick={() => unsubscribe(service)}>
-                Unsubscribe
-              </Button>
-            ) : keyInputFor === service.id ? (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="API key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="w-48"
-                />
-                <Button onClick={() => subscribe(service, apiKey)} disabled={!apiKey}>
-                  Confirm
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setKeyInputFor(service.id)}>Subscribe</Button>
-            )}
-          </div>
-        ))}
       </div>
+
+      {SECTIONS.map((section) => {
+        const services = catalog.filter((s) => s.category === section.id);
+        if (services.length === 0) return null;
+        return (
+          <section
+            key={section.id}
+            aria-labelledby={`services-${section.id}`}
+            className="space-y-3"
+          >
+            <h2
+              id={`services-${section.id}`}
+              className="font-heading text-lg font-semibold tracking-tight"
+            >
+              {section.title}
+            </h2>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] items-start gap-4">
+              {services.map((s) => (
+                <Card key={s.id} className="shadow-soft">
+                  <CardHeader>
+                    <CardTitle>{s.name}</CardTitle>
+                    <CardDescription>{s.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <StatusBadge value={status(s.id, hints.has(s.id))} auth={s.auth} />
+                    <ul className="space-y-1 text-sm">
+                      {s.widgets.map((w) => (
+                        <li key={w.id}>
+                          <span className="font-medium">{w.name}</span>
+                          <span className="text-muted-foreground"> · {w.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {s.key && (
+                      <OwnKeyForm
+                        serviceId={s.id}
+                        label={s.key.label}
+                        helpUrl={s.key.helpUrl}
+                        signedIn={!!userId}
+                        hint={hints.get(s.id) ?? null}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+              {section.id === "utility" && <GitHubPlaceholder />}
+            </div>
+          </section>
+        );
+      })}
     </div>
+  );
+}
+
+/** github needs oauth2 (#19, #26), not in the registry yet so about.json doesnt list it */
+function GitHubPlaceholder() {
+  return (
+    <Card className="shadow-soft border-dashed">
+      <CardHeader>
+        <CardTitle>GitHub</CardTitle>
+        <CardDescription>Your notifications, activity and profile. Coming soon.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <StatusBadge value="needs_account" auth="oauth" />
+        <Button variant="outline" size="sm" disabled>
+          <Link2 /> Connect with GitHub (OAuth2)
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

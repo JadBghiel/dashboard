@@ -25,5 +25,27 @@ services:
       - "8025:8025"
       - "1025:1025"
 
+  # own container instead of a 2nd database in the dev one, so a test run truncating tables can
+  # never touch what youre looking at in studio. tmpfs bc nothing here is worth keeping and ram
+  # makes the suite noticeably faster
+  db-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dashboard
+      POSTGRES_PASSWORD: dashboard
+      POSTGRES_DB: dashboard_test
+      # no durability needed for a db we throw away
+      PGDATA: /var/lib/postgresql/data
+    command: postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+    ports:
+      - "55434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashboard -d dashboard_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
 volumes:
   db-data:

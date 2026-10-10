@@ -4,10 +4,6 @@
 
 import { z } from "zod";
 
-import type { NewsPrefs } from "../news-prefs";
-
-export type WidgetSize = "1x1" | "2x1" | "2x2";
-
 /** how a service gets its data. none = open api (weather), the others need the user to link or
  * paste something first */
 export type ServiceAuth = "none" | "oauth" | "api_key";
@@ -27,16 +23,11 @@ export type UserLocation = {
   source: "saved" | "ip" | "default";
 };
 
-/** what the user saved w/o an account yet (cookies today, the account later) that a widget with an
- * empty param falls back on, the way an empty city means "where you are" */
-export type UserPrefs = { watchlist: string[]; crypto: string[]; news: NewsPrefs | null };
-
 export type FetchContext<Params> = {
   params: Params;
   credentials: WidgetCredentials;
   // always set, the location chain falls back to a default city
   location: UserLocation;
-  prefs: UserPrefs;
   // aborted when the request that asked for the data goes away or times out, pass it to fetch()
   signal: AbortSignal;
 };
@@ -53,12 +44,15 @@ export type WidgetDef<P extends ParamsSchema = ParamsSchema, R extends z.ZodType
   name: string;
   description: string;
   params: P;
-  sizes: readonly WidgetSize[];
   // seconds. min protects the upstream quota, a user cant set a refresh below it
   refresh: { default: number; min: number };
   // seconds a fetched payload stays fresh. the cache key is built from the params, not from the
   // instance, so 2 instances w/ the same config share 1 upstream call
   cache: { ttl: number };
+  // true when the answer depends on where the user is (an empty city = "where you are"). only those
+  // put the location in their cache key, the others share 1 answer whatever the city. a widget that
+  // reads ctx.location w/o it would serve 1 city's answer to everyone
+  usesLocation?: boolean;
   payload: R;
   // method syntax on purpose: it lets a widget w/ its own params still count as a plain WidgetDef
   // in the registry list
@@ -148,7 +142,6 @@ export function defineWidget<P extends ParamsSchema, R extends z.ZodType>(
   if (Object.keys(def.params.shape).length === 0) {
     throw new Error(`widget ${def.id} has no params, the subject doesnt count those`);
   }
-  if (def.sizes.length === 0) throw new Error(`widget ${def.id} needs at least 1 size`);
   if (def.refresh.min <= 0 || def.refresh.default < def.refresh.min) {
     throw new Error(`widget ${def.id}: refresh.default must be >= refresh.min > 0`);
   }

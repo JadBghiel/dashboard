@@ -29,17 +29,16 @@ export const watchlistWidget = defineWidget({
   name: "Stock market",
   description: "Live prices for your tickers, with a search to add new ones",
   params: z.object({
-    // comma list like "AAPL,MSFT". empty = the watchlist you hearted, the way an empty city is
-    // "where you are"
+    // comma list like "AAPL,MSFT", the hearted tickers in the user's order
     tickers: z.string().trim().max(120).default(""),
     change: z.enum(["percent", "amount"]).default("percent"),
   }),
-  sizes: ["1x1", "2x1"],
   // quotes move, but the free plan is 60 calls/min for everyone
   refresh: { default: 120, min: 60 },
   cache: { ttl: 60 },
   payload: WatchlistPayload,
-  async fetch({ params, prefs, signal }) {
+  async fetch({ params, credentials, signal }) {
+    const ownKey = credentials?.kind === "api_key" ? credentials.apiKey : undefined;
     const symbols = params.tickers
       ? [
           ...new Set(
@@ -49,7 +48,7 @@ export const watchlistWidget = defineWidget({
               .filter(Boolean),
           ),
         ]
-      : prefs.watchlist;
+      : [];
 
     const valid = symbols.flatMap((s) => {
       const parsed = TickerSymbol.safeParse(s);
@@ -61,7 +60,10 @@ export const watchlistWidget = defineWidget({
 
     const results = await Promise.allSettled(
       valid.slice(0, WATCHLIST_MAX).map(async (symbol) => {
-        const [q, p] = await Promise.all([quote(symbol, signal), profile(symbol, signal)]);
+        const [q, p] = await Promise.all([
+          quote(symbol, signal, ownKey),
+          profile(symbol, signal, ownKey),
+        ]);
         return {
           symbol,
           name: p.name,

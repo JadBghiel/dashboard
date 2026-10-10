@@ -1,5 +1,5 @@
 /** 4 keyless upstreams behind the tools service: nager.date (holidays), mymemory (translation),
- * disify (email checks), wikipedia (on this day), all parsed with zod */
+ * wikipedia (on this day), all parsed with zod */
 
 import { z } from "zod";
 
@@ -102,34 +102,6 @@ export async function translate(text: string, from: Language, to: Language, sign
   if (!translated) throw new UpstreamError("mymemory", 204);
   translationCache.set(key, translated);
   return translated;
-}
-
-// ---- email check ----
-
-const EmailResponse = z.object({
-  format: z.boolean(),
-  domain: z.string().optional(),
-  disposable: z.boolean().optional(),
-  dns: z.boolean().optional(),
-});
-
-export type EmailCheck = {
-  format: boolean;
-  domain: string | null;
-  // the domain has mail servers
-  acceptsMail: boolean;
-  disposable: boolean;
-};
-
-export async function checkEmail(email: string, signal: AbortSignal): Promise<EmailCheck> {
-  const url = new URL(`https://www.disify.com/api/email/${encodeURIComponent(email)}`);
-  const body = EmailResponse.parse(await getJson(url, { signal, what: "disify" }));
-  return {
-    format: body.format,
-    domain: body.domain ?? null,
-    acceptsMail: body.dns ?? false,
-    disposable: body.disposable ?? false,
-  };
 }
 
 // ---- on this day ----
