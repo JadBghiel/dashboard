@@ -38,16 +38,16 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-1">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Everything around {location.name}.</p>
-      </div>
-
-      {/* asked once, unless the user already picked a city */}
-      {consent === null && location.source !== "saved" && <LocationConsent />}
-
       <TimerProvider rates={RATES}>
         <Dashboard
+          heading={
+            <div className="space-y-1">
+              <h1 className="font-heading text-2xl font-semibold tracking-tight">Dashboard</h1>
+              <p className="text-muted-foreground text-sm">Everything around {location.name}.</p>
+            </div>
+          }
+          // asked once, unless the user already picked a city
+          notice={consent === null && location.source !== "saved" ? <LocationConsent /> : null}
           initial={instances.map((i) => ({ ...i, params: i.params as Record<string, unknown> }))}
           specs={SPECS}
           signedIn={!!userId}

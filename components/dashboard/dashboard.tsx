@@ -26,12 +26,18 @@ export type Spec = WidgetSpec & { description: string };
 const key = (i: InstanceView) => cardKey(i.serviceId, i.widgetId);
 
 export function Dashboard({
+  heading,
+  notice,
   initial,
   specs,
   signedIn,
   locationKey,
   defaultOrder,
 }: {
+  // the page title, the toolbar sits on its right
+  heading: React.ReactNode;
+  // under the header, the location consent question when there is one
+  notice?: React.ReactNode;
   initial: InstanceView[];
   specs: Record<string, Spec>;
   signedIn: boolean;
@@ -101,6 +107,7 @@ export function Dashboard({
   return (
     <>
       <Toolbar
+        heading={heading}
         signedIn={signedIn}
         editing={editing}
         onToggleEditing={() => setEditing(!editing)}
@@ -108,6 +115,7 @@ export function Dashboard({
         onReset={reset}
         error={error}
       />
+      {notice}
 
       <AddWidgetsDialog
         open={adding}
