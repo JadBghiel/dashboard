@@ -17,6 +17,13 @@ services:
       timeout: 3s
       retries: 30
 
+  mailpit:
+    image: axllent/mailpit:latest
+    # only the inbox ui on the host, the server reaches smtp (1025) inside the compose network. not
+    # publishing 1025 here also lets this stack start while docker-compose.dev.yml is up
+    ports:
+      - "8025:8025"
+
   server:
     build: .
     # the port the subject asks for
@@ -24,6 +31,11 @@ services:
       - "8080:8080"
     environment:
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
+      BETTER_AUTH_SECRET: dev-only-secret-for-the-graded-stack-change-me
+      BETTER_AUTH_URL: http://localhost:8080
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: dashboard@localhost
       # from the shell or a root .env (compose doesnt read .env.local). empty = the market card says
       # its not configured, everything else works
       FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
@@ -33,6 +45,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     healthcheck:
       # node instead of curl, the slim image has no http client and fetch is built in. hits the
       # graded url itself, healthy = the rewrite and the registry both work

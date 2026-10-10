@@ -19,6 +19,11 @@ services:
       interval: 2s
       timeout: 3s
       retries: 15
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
   # own container instead of a 2nd database in the dev one, so a test run truncating tables can
   # never touch what youre looking at in studio. tmpfs bc nothing here is worth keeping and ram

@@ -10,6 +10,7 @@ import { currentUserId } from "@/server/auth/current-user";
 import { listHints } from "@/server/credential-store";
 import { registry } from "@/server/registry";
 import type { ServiceCategory } from "@/server/registry/define";
+import { serviceStatus, type ServiceStatus } from "@/server/subscriptions";
 
 export const metadata: Metadata = { title: "Services" };
 
@@ -19,18 +20,7 @@ const SECTIONS: { id: ServiceCategory; title: string }[] = [
   { id: "games", title: "Games" },
 ];
 
-/** read on the server: whether a key service has a key, the user's own or the app's */
-function status(serviceId: string, ownKey: boolean) {
-  const def = registry.getService(serviceId);
-  if (def?.auth === "oauth") return "needs_account" as const;
-  if (ownKey) return "own_key" as const;
-  if (def?.auth === "api_key" && def.key && !process.env[def.key.env]) {
-    return "missing_key" as const;
-  }
-  return "ready" as const;
-}
-
-function StatusBadge({ value, auth }: { value: ReturnType<typeof status>; auth: string }) {
+function StatusBadge({ value, auth }: { value: ServiceStatus; auth: string }) {
   if (value === "needs_account") {
     return (
       <Badge variant="outline" className="gap-1">
@@ -48,7 +38,7 @@ function StatusBadge({ value, auth }: { value: ReturnType<typeof status>; auth: 
   if (value === "missing_key") {
     return (
       <Badge variant="destructive" className="gap-1">
-        <TriangleAlert className="size-3" aria-hidden /> Key missing on the server
+        <TriangleAlert className="size-3" aria-hidden /> Add your key to use it
       </Badge>
     );
   }
@@ -104,7 +94,10 @@ export default async function ServicesPage() {
                     <CardDescription>{s.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <StatusBadge value={status(s.id, hints.has(s.id))} auth={s.auth} />
+                    <StatusBadge
+                      value={serviceStatus(registry.getService(s.id)!, hints.has(s.id))}
+                      auth={s.auth}
+                    />
                     <ul className="space-y-1 text-sm">
                       {s.widgets.map((w) => (
                         <li key={w.id}>
@@ -120,6 +113,8 @@ export default async function ServicesPage() {
                         helpUrl={s.key.helpUrl}
                         signedIn={!!userId}
                         hint={hints.get(s.id) ?? null}
+                        // without a server key, removing yours locks the service again
+                        appKey={serviceStatus(registry.getService(s.id)!, false) === "ready"}
                       />
                     )}
                   </CardContent>
