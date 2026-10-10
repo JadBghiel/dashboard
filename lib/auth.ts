@@ -58,6 +58,9 @@ async function refuseSelfDemotion(ctx: Parameters<Parameters<typeof createAuthMi
   }
 }
 
+//the new email is typed by the user and goes into a mail's html
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: appOrigins,
@@ -78,13 +81,28 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       mailInBackground(
         user.email,
-        "Confirm your dashboard account",
-        `<p>Click to confirm: <a href="${url}">click here</a></p>`,
+        //also the 2nd step of an email change, sent to the new address, so worded for both
+        "Confirm your email address",
+        `<p>Click to confirm this email address for your dashboard account: <a href="${url}">click here</a></p>`,
       );
     },
   },
   plugins: [username(), admin()],
   user: {
+    //#47 edit profile: a new email takes 2 clicks. the current address approves first, so a stolen
+    //session alone can't move the account to another inbox, then the new address proves it's real
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        mailInBackground(
+          user.email,
+          "Approve your new dashboard email",
+          `<p>Someone asked to change your dashboard account's email to ${escapeHtml(newEmail)}.</p>` +
+            `<p>If it was you, <a href="${url}">click here to approve it</a>. We'll then send a link to ` +
+            `the new address to finish.</p><p>If it wasn't you, ignore this mail and change your password.</p>`,
+        );
+      },
+    },
     deleteUser: {
       enabled: true,
       //deleting needs a click on a link sent to the account email. works the same for password and
@@ -136,6 +154,29 @@ export const auth = betterAuth({
         }
       }
       //same rules for a new password, w/ the username and email of the signed in user
+      //better-auth answers "ok" and sends nothing when the new email already has an account, so the
+      //form can't be used to find out who has 1. the owner of this account still gets told why
+      //nothing came, in their own inbox
+      if (ctx.path === "/change-email") {
+        const session = await getSessionFromCtx(ctx);
+        const newEmail = (ctx.body?.newEmail as string | undefined)?.trim().toLowerCase();
+        if (session && newEmail && newEmail !== session.user.email) {
+          const taken = await db.user.findFirst({
+            where: { email: { equals: newEmail, mode: "insensitive" } },
+            select: { id: true },
+          });
+          if (taken) {
+            mailInBackground(
+              session.user.email,
+              "Your dashboard email wasn't changed",
+              `<p>You asked to change your dashboard account's email to ${escapeHtml(newEmail)}, but ` +
+                `that address already has an account, so nothing was changed.</p>` +
+                `<p>To use it here, delete the other account first or pick another address. If it ` +
+                `wasn't you, change your password.</p>`,
+            );
+          }
+        }
+      }
       if (ctx.path === "/change-password") {
         const session = await getSessionFromCtx(ctx);
         const newPassword = ctx.body?.newPassword as string | undefined;
@@ -172,6 +213,10 @@ export const auth = betterAuth({
       },
       //each call sends a mail
       "/delete-user": {
+        window: 60,
+        max: 3,
+      },
+      "/change-email": {
         window: 60,
         max: 3,
       },
