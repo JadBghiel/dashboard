@@ -7,6 +7,7 @@ import { DEFAULT_COINS } from "@/server/crypto-watchlist";
 import { db } from "@/server/db";
 import { registry } from "@/server/registry";
 import type { WidgetDef } from "@/server/registry/define";
+import { NotSubscribedError, requireSubscription } from "@/server/subscriptions";
 
 // what a new user starts with: 1 of each widget, in the order of the dashboard sections
 // the optional 3rd item overrides the widget defaults, crypto starts w/ 8 coins instead of none
@@ -35,7 +36,7 @@ export const MAX_INSTANCES = 50;
 
 export class InstanceError extends Error {
   constructor(
-    readonly status: 400 | 404,
+    readonly status: 400 | 403 | 404,
     message: string,
   ) {
     super(message);
@@ -56,6 +57,19 @@ function widgetOf(serviceId: string, widgetId: string) {
   const widget = registry.getWidget(serviceId, widgetId);
   if (!widget) throw new InstanceError(404, "That widget doesn't exist.");
   return widget;
+}
+
+/** requireSubscription (#18): a widget of a locked service can't be put on the dashboard, neither
+ * added nor switched back on. one already there stays, its card says how to unlock it */
+async function checkSubscribed(userId: string, serviceId: string) {
+  const service = registry.getService(serviceId);
+  if (!service) return;
+  try {
+    await requireSubscription(userId, service);
+  } catch (err) {
+    if (err instanceof NotSubscribedError) throw new InstanceError(403, err.message);
+    throw err;
+  }
 }
 
 // the same zod schema the data endpoint uses, so a saved config is always 1 the fetcher can read
@@ -129,6 +143,7 @@ export async function createInstance(
   input: { serviceId: string; widgetId: string; params?: unknown; refreshSec?: number },
 ) {
   const widget = widgetOf(input.serviceId, input.widgetId);
+  await checkSubscribed(userId, input.serviceId);
   if ((await db.widgetInstance.count({ where: { userId } })) >= MAX_INSTANCES) {
     throw new InstanceError(400, `You can have ${MAX_INSTANCES} widgets at most.`);
   }
@@ -160,6 +175,7 @@ export async function updateInstance(
   const row = await db.widgetInstance.findFirst({ where: { id, userId }, select: SELECT });
   if (!row) throw new InstanceError(404, "That widget isn't on your dashboard.");
   const widget = widgetOf(row.serviceId, row.widgetId);
+  if (patch.hidden === false && row.hidden) await checkSubscribed(userId, row.serviceId);
   // null clears an option, so an optional one (the news language) can go back to automatic
   const merged = patch.params && { ...(row.params as object), ...patch.params };
   if (merged)

@@ -6,8 +6,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
-    globalSetup: ["tests/setup/global.ts"],
-    setupFiles: ["tests/setup/env.ts", "tests/setup/each.ts"],
     // the test db is 1 container, 2 files truncating at the same time would fight
     fileParallelism: false,
     typecheck: {

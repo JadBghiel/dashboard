@@ -83,6 +83,8 @@ import { bodyLimit } from "hono/body-limit";
 import { rateLimit } from "@/server/rate-limit";
 import { widgetData, widgetDataRoute } from "./routes/widgets";
 
+import { auth } from "@/lib/auth";
+
 // basePath bc the next catch all hands us the full url, /api included
 const app = new OpenAPIHono({
   // 1 place for every zod failure, so a bad body reads like any other error
@@ -103,6 +105,8 @@ const app = new OpenAPIHono({
 
 app.onError(onError);
 app.notFound(notFound);
+// better-auth owns everything under /auth: sign-up, sign-in, verify-email, oauth callbacks later
+app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
 // before the routes, so a request over the limit never reaches an upstream. a full dashboard is
 // ~15 widget fetches, the timer and the refresh btns stay far under these

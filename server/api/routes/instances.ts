@@ -62,6 +62,7 @@ export const createInstanceRoute = createRoute({
   responses: {
     201: json("the new widget", Instance),
     400: errorResponse("bad params or refresh rate"),
+    403: errorResponse("the service needs a subscription: your key or a linked account"),
     404: errorResponse("no such widget"),
     ...unauthorized,
   },
@@ -86,6 +87,7 @@ export const updateInstanceRoute = createRoute({
   responses: {
     200: json("the widget as saved", Instance),
     400: errorResponse("bad params or refresh rate"),
+    403: errorResponse("switching on a widget of a service you're not subscribed to"),
     404: errorResponse("not 1 of your widgets"),
     ...unauthorized,
   },
@@ -121,11 +123,11 @@ const NO_USER: ApiError = { code: "unauthorized", message: "Sign in to see your 
 
 function failed(c: Context, err: unknown) {
   if (!(err instanceof InstanceError)) throw err;
-  const body: ApiError = {
-    code: err.status === 404 ? "not_found" : "bad_request",
-    message: err.message,
-  };
-  return err.status === 404 ? c.json(body, 404) : c.json(body, 400);
+  const code =
+    err.status === 404 ? "not_found" : err.status === 403 ? "not_subscribed" : "bad_request";
+  const body: ApiError = { code, message: err.message };
+  if (err.status === 404) return c.json(body, 404);
+  return err.status === 403 ? c.json(body, 403) : c.json(body, 400);
 }
 
 export const listInstancesHandler: RouteHandler<typeof listInstancesRoute> = async (c) => {
@@ -137,8 +139,9 @@ export const listInstancesHandler: RouteHandler<typeof listInstancesRoute> = asy
 export const createInstanceHandler: RouteHandler<typeof createInstanceRoute> = async (c) => {
   const userId = await currentUserId(c.req.raw.headers);
   if (!userId) return c.json(NO_USER, 401);
+  const input = c.req.valid("json");
   try {
-    const row = await createInstance(userId, c.req.valid("json"));
+    const row = await createInstance(userId, input);
     return c.json(row as z.infer<typeof Instance>, 201);
   } catch (err) {
     return failed(c, err);

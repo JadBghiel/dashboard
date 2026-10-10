@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
-
 import { Download } from "lucide-react";
-
 import { PrivacyNotice } from "@/components/settings/privacy-notice";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { locationState } from "@/server/user-location";
 import { displaySettings } from "@/server/user-settings";
+import { DeleteAccountCard } from "@/components/settings/delete-account";
 
 export const metadata: Metadata = { title: "Settings & privacy" };
 
@@ -60,7 +59,7 @@ export default async function SettingsPage() {
           )}
         </CardContent>
       </Card>
-
+      {display.signedIn && <DeleteAccountCard />}
       <PrivacyNotice />
     </div>
   );

@@ -4,10 +4,13 @@
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
+import { currentUserId } from "@/server/auth/current-user";
 import { TickerSymbol } from "@/server/market-watchlist";
+import { registry } from "@/server/registry";
 import { WidgetError } from "@/server/registry/define";
 import { googleFinanceUrl, profile, quote, searchSymbols } from "@/server/services/market/finnhub";
 import { searchCoins } from "@/server/services/market/coingecko";
+import { NotSubscribedError, requireSubscription } from "@/server/subscriptions";
 
 import { errorResponse } from "../errors";
 
@@ -30,7 +33,8 @@ export const searchRoute = createRoute({
       z.object({ results: z.array(z.object({ symbol: z.string(), name: z.string() })) }),
     ),
     400: errorResponse("the query is empty or too long"),
-    422: errorResponse("market data isnt configured"),
+    403: errorResponse("no app key on the server and the user saved none"),
+    422: errorResponse("finnhub refused the search"),
     502: errorResponse("finnhub is down"),
   },
 });
@@ -62,7 +66,8 @@ export const quoteRoute = createRoute({
       }),
     ),
     400: errorResponse("not a ticker symbol"),
-    422: errorResponse("unknown ticker, a non us one, or market data isnt configured"),
+    403: errorResponse("no app key on the server and the user saved none"),
+    422: errorResponse("unknown ticker or a non us one"),
     502: errorResponse("finnhub is down and we have no last price"),
   },
 });
@@ -82,10 +87,25 @@ function failure(err: unknown) {
   };
 }
 
+/** the user's own finnhub key when they saved one, null = the app key. throws NotSubscribedError when
+ * neither exists, the routes answer it w/ the same 403 as the widget (#18) */
+async function marketKey(c: Context) {
+  const service = registry.getService("market")!;
+  const creds = await requireSubscription(await currentUserId(c.req.raw.headers), service);
+  return creds?.kind === "api_key" ? creds.apiKey : undefined;
+}
+
+const notSubscribed = (err: NotSubscribedError) => ({
+  code: "not_subscribed",
+  message: err.message,
+});
+
 export const search: RouteHandler<typeof searchRoute> = async (c) => {
   try {
-    return c.json({ results: await searchSymbols(c.req.valid("query").q, timeout(c)) }, 200);
+    const key = await marketKey(c);
+    return c.json({ results: await searchSymbols(c.req.valid("query").q, timeout(c), key) }, 200);
   } catch (err) {
+    if (err instanceof NotSubscribedError) return c.json(notSubscribed(err), 403);
     const f = failure(err);
     return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
   }
@@ -95,7 +115,8 @@ export const quoteDetail: RouteHandler<typeof quoteRoute> = async (c) => {
   const { symbol } = c.req.valid("param");
   try {
     const signal = timeout(c);
-    const [q, p] = await Promise.all([quote(symbol, signal), profile(symbol, signal)]);
+    const key = await marketKey(c);
+    const [q, p] = await Promise.all([quote(symbol, signal, key), profile(symbol, signal, key)]);
     return c.json(
       {
         symbol,
@@ -116,6 +137,7 @@ export const quoteDetail: RouteHandler<typeof quoteRoute> = async (c) => {
       200,
     );
   } catch (err) {
+    if (err instanceof NotSubscribedError) return c.json(notSubscribed(err), 403);
     const f = failure(err);
     return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
   }
