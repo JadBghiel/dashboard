@@ -1,10 +1,10 @@
 "use client";
 
-/**  frame for every widget : icon, title, subtitle, refresh, a footer link, loading and error
- * states, the grid in #23 adds the config, remove and drag handles here, the widgets themselves only
- * render content */
+/** frame for every widget: icon, title, subtitle, the refresh and settings buttons top right, a
+ * footer link, loading and error states. the widgets themselves only render content */
 
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Settings } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+import { useInstance } from "./instance-context";
+import { SettingsDialog } from "./settings-dialog";
 
 type Props = {
   // small service icon before the title
@@ -53,6 +56,10 @@ export function WidgetCard({
   className,
   children,
 }: Props) {
+  // the gear only exists on the dashboard, where the card shows a saved widget
+  const instance = useInstance();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   return (
     // h-full so every card in a grid row is as tall as the tallest, footers line up
     <Card className={cn("shadow-soft h-full", className)} aria-busy={loading}>
@@ -88,6 +95,19 @@ export function WidgetCard({
           >
             <RefreshCw className={cn(loading && "animate-spin")} />
           </Button>
+          {instance && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSettingsOpen(true)}
+                aria-label={`${title} settings`}
+              >
+                <Settings />
+              </Button>
+              <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+            </>
+          )}
         </CardAction>
       </CardHeader>
       <CardContent className="flex-1 space-y-3">

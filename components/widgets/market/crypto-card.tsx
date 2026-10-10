@@ -10,6 +10,7 @@ import { SortableList } from "@/components/sortable-list";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { CRYPTO_MAX } from "@/server/crypto-watchlist";
 import type { CryptoPayload } from "@/server/services/market/widgets/crypto";
 
 import { useWidgetData } from "../use-widget-data";
@@ -19,53 +20,43 @@ import { Change, HeartButton, Logo, money } from "./parts";
 
 type Match = { id: string; name: string; symbol: string; image: string | null };
 
-export function CryptoCard({ currency = "usd" }: { currency?: "usd" | "eur" | "gbp" }) {
-  const [saved, setSaved] = useState<string[] | null>(null);
+type Props = {
+  // coingecko ids, comma list, the hearted coins in the user's order
+  coins?: string;
+  currency?: "usd" | "eur" | "gbp";
+  // saves the hearted list to the user's widget, set on the dashboard
+  onChange?: (patch: Record<string, unknown>) => void;
+};
+
+// same cap as the server param, 15 coins is already a long card
+
+export function CryptoCard({ coins = "", currency = "usd", onChange }: Props) {
+  const [saved, setSaved] = useState(() => coins.split(",").filter(Boolean));
   const [tab, setTab] = useState<string>("watchlist");
-  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.market["crypto-watchlist"]
-      .$get()
-      .then((res) => res.json())
-      .then((body) => setSaved(body.ids))
-      .catch(() => setSaved([]));
-  }, []);
-
-  // coins "" = the hearted ones. sorted in the key: a heart refetches, a drag only reorders
+  // sorted in the params: a heart refetches, a drag only reorders what's already on screen
   const { data, error, loading, refresh } = useWidgetData<CryptoPayload>(
     "market",
     "crypto_prices",
-    { coins: "", currency },
-    saved ? [...saved].sort().join(",") : "",
+    { coins: [...saved].sort().join(","), currency },
+    "",
   );
 
-  async function toggle(id: string) {
-    setBusy(true);
-    setMessage(null);
-    const res = saved?.includes(id)
-      ? await api.market["crypto-watchlist"][":id"].$delete({ param: { id } })
-      : await api.market["crypto-watchlist"].$post({ json: { id } });
-    const body = await res.json();
-    setBusy(false);
-    if ("ids" in body) setSaved(body.ids);
-    else setMessage(body.message);
+  function save(next: string[]) {
+    setSaved(next);
+    onChange?.({ coins: next.join(",") });
   }
 
-  // optimistic: the rows move at once, and go back if the server refuses
-  async function reorder(ids: string[]) {
-    const previous = saved;
-    setSaved(ids);
-    const res = await api.market["crypto-watchlist"].$put({ json: { ids } });
-    if (!res.ok) {
-      setSaved(previous);
-      setMessage("Couldn't save the new order.");
-    }
+  function toggle(id: string) {
+    setMessage(null);
+    if (saved.includes(id)) return save(saved.filter((c) => c !== id));
+    if (saved.length >= CRYPTO_MAX) return setMessage(`${CRYPTO_MAX} coins at most.`);
+    save([...saved, id]);
   }
 
   const byId = new Map(data?.items.map((c) => [c.id, c]));
-  const ordered = (saved ?? []).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
+  const ordered = saved.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
 
   return (
     <WidgetCard
@@ -92,7 +83,7 @@ export function CryptoCard({ currency = "usd" }: { currency?: "usd" | "eur" | "g
       {data && (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full">
-            <TabsTrigger value="watchlist">My coins ({saved?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="watchlist">My coins ({saved.length})</TabsTrigger>
             <TabsTrigger value="search">Search</TabsTrigger>
           </TabsList>
 
@@ -111,7 +102,7 @@ export function CryptoCard({ currency = "usd" }: { currency?: "usd" | "eur" | "g
             ) : (
               <SortableList
                 className="max-h-80 overflow-y-auto"
-                onReorder={reorder}
+                onReorder={save}
                 items={ordered.map((coin) => ({
                   id: coin.id,
                   label: coin.symbol,
@@ -133,7 +124,7 @@ export function CryptoCard({ currency = "usd" }: { currency?: "usd" | "eur" | "g
                       <HeartButton
                         symbol={coin.symbol}
                         hearted
-                        busy={busy}
+                        busy={false}
                         onToggle={() => toggle(coin.id)}
                       />
                     </>
@@ -144,7 +135,7 @@ export function CryptoCard({ currency = "usd" }: { currency?: "usd" | "eur" | "g
           </TabsContent>
 
           <TabsContent value="search">
-            <CoinSearch saved={saved ?? []} busy={busy} onToggle={toggle} />
+            <CoinSearch saved={saved} busy={false} onToggle={toggle} />
           </TabsContent>
         </Tabs>
       )}
