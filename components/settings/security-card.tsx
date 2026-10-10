@@ -4,6 +4,7 @@
  * device, so a leaked one stops working everywhere the moment it's changed. google accounts have no
  * password here, they only get the sign out */
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 
@@ -120,6 +121,7 @@ function ChangePasswordForm() {
 }
 
 function SignOutEverywhere() {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,8 +135,11 @@ function SignOutEverywhere() {
       setError(error.message ?? "Something went wrong.");
       return;
     }
-    // a full load, so nothing on the page still thinks it's signed in
-    window.location.assign("/log-in");
+    // the session is already gone on the server, this clears the cookie and the page's own copy, so
+    // the sidebar doesn't still show the user
+    await authClient.signOut();
+    router.push("/log-in");
+    router.refresh();
   }
 
   return (

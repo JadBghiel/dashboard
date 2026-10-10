@@ -61,6 +61,32 @@ async function refuseSelfDemotion(ctx: Parameters<Parameters<typeof createAuthMi
 //the new email is typed by the user and goes into a mail's html
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+/** the "picture" claim of google's id token, only if it's an https url on google's own image host. the
+ * token came straight from google in the oauth exchange, the server never got it from the browser */
+function googlePicture(idToken: string): string | null {
+  try {
+    const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString("utf8"));
+    const url = new URL(payload.picture);
+    return url.protocol === "https:" && url.hostname.endsWith(".googleusercontent.com")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+//never replaces a picture the user already has, only fills an empty one
+async function fillPictureFromGoogle(account: {
+  providerId?: string;
+  userId?: string;
+  idToken?: string | null;
+}) {
+  if (account.providerId !== "google" || !account.userId || !account.idToken) return;
+  const image = googlePicture(account.idToken);
+  if (!image) return;
+  await db.user.updateMany({ where: { id: account.userId, image: null }, data: { image } });
+}
+
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: appOrigins,
@@ -133,6 +159,12 @@ export const auth = betterAuth({
           };
         },
       },
+    },
+    //google's profile picture for accounts that had none: a google sign up already gets it, these
+    //cover a password account that links google later, on the link and on each google login after
+    account: {
+      create: { after: async (account) => fillPictureFromGoogle(account) },
+      update: { after: async (account) => fillPictureFromGoogle(account) },
     },
   },
   hooks: {

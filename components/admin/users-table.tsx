@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UserAvatar } from "@/components/user-avatar";
 import { authClient } from "@/lib/auth-client";
 
 type User = {
   id: string;
   name: string;
+  image: string | null;
   username: string | null;
   email: string;
   emailVerified: boolean;
@@ -102,26 +104,29 @@ export function UsersTable({
               key={user.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{user.name}</span>
-                  {/* google accounts have no username */}
-                  {user.username && (
-                    <span className="text-muted-foreground text-sm">@{user.username}</span>
+              <div className="flex min-w-0 items-center gap-3">
+                <UserAvatar name={user.name} image={user.image} />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{user.name}</span>
+                    {/* google accounts have no username */}
+                    {user.username && (
+                      <span className="text-muted-foreground text-sm">@{user.username}</span>
+                    )}
+                    {user.role === "admin" && <Badge variant="secondary">Admin</Badge>}
+                    {!user.emailVerified && <Badge variant="outline">Unverified</Badge>}
+                    {user.banned && <Badge variant="destructive">Banned</Badge>}
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    {user.email} ·{" "}
+                    {user.subscriptions === 1
+                      ? "1 subscription"
+                      : `${user.subscriptions} subscriptions`}
+                  </p>
+                  {user.banned && user.banReason && (
+                    <p className="text-muted-foreground text-xs">Reason: {user.banReason}</p>
                   )}
-                  {user.role === "admin" && <Badge variant="secondary">Admin</Badge>}
-                  {!user.emailVerified && <Badge variant="outline">Unverified</Badge>}
-                  {user.banned && <Badge variant="destructive">Banned</Badge>}
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  {user.email} ·{" "}
-                  {user.subscriptions === 1
-                    ? "1 subscription"
-                    : `${user.subscriptions} subscriptions`}
-                </p>
-                {user.banned && user.banReason && (
-                  <p className="text-muted-foreground text-xs">Reason: {user.banReason}</p>
-                )}
               </div>
 
               <fieldset disabled={busyId === user.id} className="flex items-center gap-2">

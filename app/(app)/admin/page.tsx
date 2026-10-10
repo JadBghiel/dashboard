@@ -17,6 +17,7 @@ export default async function AdminPage() {
       select: {
         id: true,
         name: true,
+        image: true,
         username: true,
         email: true,
         emailVerified: true,

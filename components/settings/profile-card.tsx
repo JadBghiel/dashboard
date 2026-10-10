@@ -11,17 +11,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { UserAvatar } from "@/components/user-avatar";
 import { authClient } from "@/lib/auth-client";
 
 type Status = { ok: boolean; text: string } | null;
 
 export function ProfileCard({
   name,
+  image,
   username,
   email,
   emailStatus,
 }: {
   name: string;
+  // google's picture, null for an account that never used google
+  image: string | null;
   username: string | null;
   email: string;
   // set when the user lands back here from an email change link
@@ -34,6 +38,14 @@ export function ProfileCard({
         <CardDescription>Your name, your username and the email we write to.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="flex items-center gap-3">
+          <UserAvatar name={name} image={image} size="lg" />
+          <p className="text-muted-foreground text-sm">
+            {image
+              ? "Your picture comes from your Google account."
+              : "Connect Google below to use your Google picture here."}
+          </p>
+        </div>
         <NameForm name={name} username={username} />
         <Separator />
         <EmailForm email={email} initialStatus={emailStatus} />

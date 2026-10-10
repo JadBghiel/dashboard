@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -131,17 +132,18 @@ export function AppSidebar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
-                    <div className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                      {session.user.name.charAt(0).toUpperCase()}
-                    </div>
+                    <UserAvatar name={session.user.name} image={session.user.image} size="sm" />
                     <span className="truncate">{session.user.name}</span>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="w-56">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{session.user.name}</span>
-                      <span className="text-muted-foreground text-xs">{session.user.email}</span>
+                  <DropdownMenuLabel className="flex items-center gap-2 font-normal">
+                    <UserAvatar name={session.user.name} image={session.user.image} />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium">{session.user.name}</span>
+                      <span className="text-muted-foreground truncate text-xs">
+                        {session.user.email}
+                      </span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

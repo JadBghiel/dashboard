@@ -58,7 +58,7 @@ export default async function SettingsPage({
     ? await Promise.all([
         db.user.findUnique({
           where: { id: userId },
-          select: { name: true, username: true, displayUsername: true, email: true },
+          select: { name: true, image: true, username: true, displayUsername: true, email: true },
         }),
         db.account.findMany({
           where: { userId },
@@ -123,6 +123,7 @@ export default async function SettingsPage({
       {user && (
         <ProfileCard
           name={user.name}
+          image={user.image}
           username={user.displayUsername ?? user.username}
           email={user.email}
           emailStatus={emailStatus(await searchParams)}
