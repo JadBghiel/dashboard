@@ -78,6 +78,8 @@ import {
   removeKey,
   saveKeyRoute,
 } from "./routes/credentials";
+import { bodyLimit } from "hono/body-limit";
+
 import { rateLimit } from "@/server/rate-limit";
 import { widgetData, widgetDataRoute } from "./routes/widgets";
 
@@ -104,6 +106,15 @@ app.notFound(notFound);
 
 // before the routes, so a request over the limit never reaches an upstream. a full dashboard is
 // ~15 widget fetches, the timer and the refresh btns stay far under these
+// no request body is ever bigger than a few kb, a huge one is refused before it's read
+app.use(
+  "*",
+  bodyLimit({
+    maxSize: 64 * 1024,
+    onError: (c) =>
+      c.json<ApiError>({ code: "payload_too_large", message: "The request is too big." }, 413),
+  }),
+);
 app.use("/widgets/*", rateLimit("widget", 150, 60));
 app.use("/tools/translate", rateLimit("translation", 30, 60));
 app.use("/location/search", rateLimit("city search", 60, 60));

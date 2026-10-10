@@ -30,6 +30,9 @@ export const DEFAULT_WIDGETS: [service: string, widget: string, params?: object]
 // slowest refresh a user can pick, the timer still needs to come back once a day
 export const MAX_REFRESH_SEC = 86_400;
 
+// a full dashboard is 14, this leaves room for duplicates while a script cant fill the table
+export const MAX_INSTANCES = 50;
+
 export class InstanceError extends Error {
   constructor(
     readonly status: 400 | 404,
@@ -126,6 +129,9 @@ export async function createInstance(
   input: { serviceId: string; widgetId: string; params?: unknown; refreshSec?: number },
 ) {
   const widget = widgetOf(input.serviceId, input.widgetId);
+  if ((await db.widgetInstance.count({ where: { userId } })) >= MAX_INSTANCES) {
+    throw new InstanceError(400, `You can have ${MAX_INSTANCES} widgets at most.`);
+  }
   const last = await db.widgetInstance.findFirst({
     where: { userId },
     orderBy: { position: "desc" },
