@@ -1,9 +1,13 @@
-/** GET /api/services: every service w/ its widgets and whether it works right now. a key service
- * only says whether the server has its key, never the key itself */
+/** GET /api/services: every service w/ its widgets, whether it works right now, and whether the
+ * current user is subscribed. a key service only says whether the server has its key, never the
+ * key itself */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 
+import { prisma } from "@/lib/db";
 import { registry } from "@/server/registry";
+
+import { getSessionUser } from "../session-middleware";
 
 const ServiceStatus = z.object({
   id: z.string(),
@@ -15,13 +19,15 @@ const ServiceStatus = z.object({
   status: z.enum(["ready", "missing_key", "needs_account"]),
   key: z.object({ label: z.string(), helpUrl: z.string() }).nullable(),
   widgets: z.array(z.object({ id: z.string(), name: z.string(), description: z.string() })),
+  // none is always true once logged in, matching requireSubscription's own rule
+  subscribed: z.boolean(),
 });
 
 export const servicesRoute = createRoute({
   method: "get",
   path: "/services",
   tags: ["services"],
-  summary: "the service catalog and what each one needs",
+  summary: "the service catalog, what each needs, and the current user's subscription status",
   responses: {
     200: {
       description: "every service, grouped by nothing, in registry order",
@@ -30,7 +36,20 @@ export const servicesRoute = createRoute({
   },
 });
 
-export const listServices: RouteHandler<typeof servicesRoute> = (c) => {
+export const listServices: RouteHandler<typeof servicesRoute> = async (c) => {
+  const user = getSessionUser(c);
+
+  const subscribedIds = user
+    ? new Set(
+        (
+          await prisma.serviceSubscription.findMany({
+            where: { userId: user.id, status: "active" },
+            select: { serviceId: true },
+          })
+        ).map((s) => s.serviceId),
+      )
+    : new Set<string>();
+
   const services = registry.catalog.map((s) => {
     const def = registry.getService(s.id);
     const hasKey = def?.key ? Boolean(process.env[def.key.env]) : true;
@@ -49,6 +68,7 @@ export const listServices: RouteHandler<typeof servicesRoute> = (c) => {
       status: status as "ready" | "missing_key" | "needs_account",
       key: s.key,
       widgets: s.widgets.map((w) => ({ id: w.id, name: w.name, description: w.description })),
+      subscribed: s.auth === "none" ? Boolean(user) : subscribedIds.has(s.id),
     };
   });
   return c.json({ services }, 200);
