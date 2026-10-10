@@ -177,6 +177,8 @@ export function Dashboard({
                           id: "github-placeholder",
                           label: "GitHub",
                           fixed: true,
+                          // 4th, in the 1st row next to weather, stocks and crypto
+                          at: 3,
                           node: <GitHubPlaceholderCard />,
                         },
                       ]

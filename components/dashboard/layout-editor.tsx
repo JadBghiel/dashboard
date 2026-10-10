@@ -37,6 +37,8 @@ export type SectionItem = {
   className?: string;
   // a placeholder, not a saved widget: it stays put and has no cross
   fixed?: boolean;
+  // where a fixed card sits among the others, 0 based. it never moves, the others flow around it
+  at?: number;
   node: React.ReactNode;
 };
 
@@ -65,7 +67,12 @@ export function SortableSection({
   );
 
   const sortable = items.filter((i) => !i.fixed);
-  const ids = sortable.map((i) => i.id);
+  // the fixed cards slotted in at their place, so dnd-kit lays out the grid w/ them in it
+  const ordered = [...sortable];
+  for (const f of items.filter((i) => i.fixed)) {
+    ordered.splice(Math.min(f.at ?? ordered.length, ordered.length), 0, f);
+  }
+  const ids = ordered.map((i) => i.id);
   const byId = new Map(items.map((i) => [i.id, i]));
   const label = (key: string | number) => byId.get(String(key))?.label ?? String(key);
 
@@ -85,7 +92,9 @@ export function SortableSection({
 
   function onDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
-    onReorder(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))));
+    const moved = arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+    // only the saved widgets go to the server, a fixed card stays at its own place
+    onReorder(moved.filter((i) => !byId.get(i)?.fixed));
   }
 
   return (
@@ -99,22 +108,15 @@ export function SortableSection({
     >
       <SortableContext items={ids} strategy={rectSortingStrategy}>
         <div className={grid}>
-          {sortable.map((item) => (
+          {ordered.map((item) => (
             <SortableCard
               key={item.id}
               item={item}
-              editing={editing}
-              movable={editing && sortable.length > 1}
+              editing={editing && !item.fixed}
+              movable={editing && !item.fixed && sortable.length > 1}
               onHide={() => onHide(item.id)}
             />
           ))}
-          {items
-            .filter((i) => i.fixed)
-            .map((item) => (
-              <div key={item.id} className={cn("h-full", item.className)}>
-                {item.node}
-              </div>
-            ))}
         </div>
       </SortableContext>
     </DndContext>
@@ -156,7 +158,7 @@ function SortableCard({
         <>
           <span
             aria-hidden
-            className="bg-background text-muted-foreground absolute -top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border px-2 py-0.5 text-xs shadow-sm"
+            className="bg-background text-muted-foreground absolute -top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap shadow-sm"
           >
             {movable && <GripVertical className="size-3" />}
             {item.label}
