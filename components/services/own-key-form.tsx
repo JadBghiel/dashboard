@@ -18,6 +18,7 @@ export function OwnKeyForm({
   helpUrl,
   signedIn,
   hint: savedHint,
+  appKey,
 }: {
   serviceId: string;
   label: string;
@@ -25,6 +26,8 @@ export function OwnKeyForm({
   signedIn: boolean;
   // last 4 characters of the saved key, null = none saved
   hint: string | null;
+  // the server has its own key for this service: removing yours falls back to it instead of locking
+  appKey: boolean;
 }) {
   const router = useRouter();
   const [hint, setHint] = useState(savedHint);
@@ -60,7 +63,11 @@ export function OwnKeyForm({
     setBusy(false);
     if (!res?.ok) return setMessage("Could not remove the key, try again.");
     setHint(null);
-    setMessage("Removed. Your widgets use the app's key again.");
+    setMessage(
+      appKey
+        ? "Removed. Your widgets use the app's key again."
+        : "Removed. These widgets stay on your dashboard but stop until you add a key again.",
+    );
     router.refresh();
   }
 
@@ -68,8 +75,10 @@ export function OwnKeyForm({
     <div className="bg-muted/40 space-y-2 rounded-lg border p-3">
       <p className="text-sm font-medium">Use your own {label}</p>
       <p className="text-muted-foreground text-xs">
-        Optional. With your own key your widgets don&apos;t share the app&apos;s free quota. It is
-        stored encrypted and only its last 4 characters are ever shown back.
+        {appKey
+          ? "Optional. With your own key your widgets don't share the app's free quota."
+          : "Required: this server has no key of its own for this service."}{" "}
+        It is stored encrypted and only its last 4 characters are ever shown back.
       </p>
 
       {hint && (

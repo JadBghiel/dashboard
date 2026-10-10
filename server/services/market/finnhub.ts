@@ -50,14 +50,20 @@ const SearchResponse = z.object({
 
 const searchCache = ttlCache<SymbolMatch[]>(10 * 60_000);
 
-export async function searchSymbols(q: string, signal: AbortSignal): Promise<SymbolMatch[]> {
+export async function searchSymbols(
+  q: string,
+  signal: AbortSignal,
+  ownKey?: string,
+): Promise<SymbolMatch[]> {
   const key = q.toLowerCase();
   const hit = searchCache.get(key);
   if (hit) return hit;
 
   // the free plan only quotes us listings, so search asks for those only. a guess on the symbol
   // suffix doesnt work: tokyo's .T looks like a us share class (BRK.B)
-  const { result } = SearchResponse.parse(await getJson("/search", { q, exchange: "US" }, signal));
+  const { result } = SearchResponse.parse(
+    await getJson("/search", { q, exchange: "US" }, signal, ownKey),
+  );
   const seen = new Set<string>();
   const matches = result
     .filter((r) => !seen.has(r.symbol) && seen.add(r.symbol))

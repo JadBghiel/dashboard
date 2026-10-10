@@ -6,10 +6,9 @@ import { getCookie } from "hono/cookie";
 
 import { userLocation } from "@/server/user-location";
 import { currentUserId } from "@/server/auth/current-user";
-import { keyFor } from "@/server/credential-store";
-import type { ServiceDef, WidgetCredentials } from "@/server/registry/define";
 import { registry } from "@/server/registry";
 import { runWidget } from "@/server/registry/run";
+import { NotSubscribedError, requireSubscription } from "@/server/subscriptions";
 import { errorResponse } from "../errors";
 
 export const widgetDataRoute = createRoute({
@@ -55,15 +54,19 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   if (!service || !widget) {
     return c.json({ code: "not_found", message: `No widget ${widgetId} in ${serviceId}.` }, 404);
   }
-  // linked accounts arrive w/ #19. a key service runs on the user's own key when they saved one,
-  // else on the app key (#17)
-  if (service.auth === "oauth") {
-    return c.json({ code: "forbidden", message: `Link your ${service.name} account first.` }, 403);
+  // a locked service answers 403 before anything goes upstream. a key service runs on the user's
+  // own key when they saved one, else on the app key (#17, #18)
+  let credentials;
+  try {
+    credentials = await requireSubscription(await currentUserId(c.req.raw.headers), service);
+  } catch (err) {
+    if (!(err instanceof NotSubscribedError)) throw err;
+    return c.json({ code: "not_subscribed", message: err.message }, 403);
   }
 
   const result = await runWidget(serviceId, widget, c.req.valid("json").params, {
     location: await userLocation(c.req.raw.headers, (name) => getCookie(c, name)),
-    credentials: await ownKey(c.req.raw.headers, service),
+    credentials,
     signal: c.req.raw.signal,
   });
 
@@ -81,10 +84,3 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   }
   return c.json({ code: "upstream_error", message: result.message }, 502);
 };
-
-async function ownKey(headers: Headers, service: ServiceDef): Promise<WidgetCredentials> {
-  if (service.auth !== "api_key") return null;
-  const userId = await currentUserId(headers);
-  const apiKey = userId && (await keyFor(userId, service.id));
-  return apiKey ? { kind: "api_key", apiKey } : null;
-}
