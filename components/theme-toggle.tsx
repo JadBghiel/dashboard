@@ -3,6 +3,8 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import { api } from "@/lib/api";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,8 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function ThemeToggle() {
-  const { setTheme } = useTheme();
+// a signed in user's choice is saved to their settings too, so it follows them to other devices
+export function ThemeToggle({ signedIn = false }: { signedIn?: boolean }) {
+  const { setTheme: setLocal } = useTheme();
+  const setTheme = (theme: "system" | "light" | "dark") => {
+    setLocal(theme);
+    if (signedIn) api.settings.$patch({ json: { theme } }).catch(() => {});
+  };
 
   return (
     <DropdownMenu>

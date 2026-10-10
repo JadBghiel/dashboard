@@ -5,11 +5,15 @@ import { LocationPicker } from "@/components/location-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { LOCATION_COOKIE, resolveLocation } from "@/server/location";
+import { currentUserId } from "@/server/auth/current-user";
+import { userLocation } from "@/server/user-location";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   // resolved on the server, location shown at the top
-  const location = resolveLocation((await cookies()).get(LOCATION_COOKIE)?.value, await headers());
+  const head = await headers();
+  const jar = await cookies();
+  const location = await userLocation(head, (name) => jar.get(name)?.value);
+  const signedIn = !!(await currentUserId(head));
 
   return (
     <SidebarProvider>
@@ -21,7 +25,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <div className="ml-auto flex items-center gap-1">
               <LocationPicker location={location} />
-              <ThemeToggle />
+              <ThemeToggle signedIn={signedIn} />
             </div>
           </div>
         </header>
