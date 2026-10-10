@@ -4,6 +4,7 @@
 
 import { Heart } from "lucide-react";
 import Image from "next/image";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,8 @@ export function Change({
   );
 }
 
+/** the company or coin logo, w/ its first letter underneath. the logo only shows once it has loaded,
+ * so a slow or blocked cdn leaves the letter instead of an empty circle */
 export function Logo({
   src,
   symbol,
@@ -45,27 +48,30 @@ export function Logo({
   symbol: string;
   size?: number;
 }) {
-  if (!src) {
-    return (
-      <span
-        className="bg-muted text-muted-foreground flex shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-        style={{ width: size, height: size }}
-        aria-hidden
-      >
-        {symbol[0]}
-      </span>
-    );
-  }
-  // from finnhub's cdn, the optimizer would only proxy a 5kb logo through our server
+  const [loaded, setLoaded] = useState(false);
   return (
-    <Image
-      src={src}
-      alt=""
-      width={size}
-      height={size}
-      unoptimized
-      className="shrink-0 rounded-full bg-white object-contain"
-    />
+    <span
+      className="bg-muted text-muted-foreground relative flex shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      {symbol[0]}
+      {src && (
+        // from finnhub's cdn, the optimizer would only proxy a 5kb logo through our server
+        <Image
+          src={src}
+          alt=""
+          width={size}
+          height={size}
+          unoptimized
+          onLoad={() => setLoaded(true)}
+          className={cn(
+            "absolute inset-0 size-full bg-white object-contain transition-opacity",
+            loaded ? "opacity-100" : "opacity-0",
+          )}
+        />
+      )}
+    </span>
   );
 }
 
