@@ -6,8 +6,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
-    globalSetup: ["tests/setup/global.ts"],
-    setupFiles: ["tests/setup/env.ts", "tests/setup/each.ts"],
+    // no suite is committed yet (#10, #13, #21), npm test stays green until the 1st one lands
+    passWithNoTests: true,
     // the test db is 1 container, 2 files truncating at the same time would fight
     fileParallelism: false,
     typecheck: {

@@ -1,6 +1,7 @@
 /** who is making the request, the 1 place the api asks it */
 
 import { auth } from "@/lib/auth";
+import { db } from "@/server/db";
 
 // 1 widget fetch asks up to 3 times (the rate limit, the location, the user's key). once the
 // session read is a db query, that's 1 query per request instead of 3
@@ -18,4 +19,12 @@ export function currentUserId(headers: Headers): Promise<string | null> {
 async function lookup(headers: Headers): Promise<string | null> {
   const session = await auth.api.getSession({ headers });
   return session?.user.id ?? null;
+}
+
+/** true only for a signed in user whose role is admin (the better-auth admin plugin's field) */
+export async function isAdmin(headers: Headers): Promise<boolean> {
+  const userId = await currentUserId(headers);
+  if (!userId) return false;
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  return user?.role === "admin";
 }

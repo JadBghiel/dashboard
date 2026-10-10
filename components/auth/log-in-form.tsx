@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
-import Link from "next/link";
+import { GoogleButton } from "./google-button";
 
-export default function LogInPage() {
+export function LogInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,11 @@ export default function LogInPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await authClient.signIn.username({ username, password });
+    //1 field for both: an @ means an email, usernames can't contain one
+    const id = login.trim();
+    const { error } = id.includes("@")
+      ? await authClient.signIn.email({ email: id, password })
+      : await authClient.signIn.username({ username: id, password });
 
     setLoading(false);
     if (error) {
@@ -33,13 +38,14 @@ export default function LogInPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <h1 className="text-xl font-semibold">Log in</h1>
         <div className="space-y-1">
-          <label htmlFor="username" className="text-sm font-medium">
-            Username
+          <label htmlFor="login" className="text-sm font-medium">
+            Username or email
           </label>
           <Input
-            id="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            id="login"
+            autoComplete="username"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
             required
           />
         </div>
@@ -50,6 +56,7 @@ export default function LogInPage() {
           <Input
             id="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -71,23 +78,7 @@ export default function LogInPage() {
         </p>
       </form>
 
-      <div className="relative my-4">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background text-muted-foreground px-2">Or</span>
-        </div>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" })}
-      >
-        Continue with Google
-      </Button>
+      {googleEnabled && <GoogleButton />}
     </>
   );
 }

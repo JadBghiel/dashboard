@@ -1,6 +1,14 @@
 "use client";
 
-import { LayoutDashboard, LogIn, LogOut, type LucideIcon, Plug, Settings, Shield } from "lucide-react";
+import {
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  type LucideIcon,
+  Plug,
+  Settings,
+  Shield,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -40,7 +48,7 @@ const NAV: NavItem[] = [
   { title: "Settings & privacy", href: "/settings", icon: Settings },
 ];
 
-// admin is filtered by role once better-auth lands, see #32
+// only shown to admins, /admin itself also checks the role on the server
 const ADMIN_NAV: NavItem[] = [{ title: "Admin", href: "/admin", icon: Shield }];
 
 export function AppSidebar() {
@@ -88,23 +96,25 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {ADMIN_NAV.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.title}>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {session?.user.role === "admin" && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {ADMIN_NAV.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.title}>
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
