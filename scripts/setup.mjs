@@ -2,7 +2,8 @@
 // its also how you bring the db back after a reboot
 
 import { spawnSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { appendFileSync, copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const COMPOSE_FILE = "docker-compose.dev.yml";
 // npx and docker-compose are .cmd shims on windows, spawn only finds those through a shell
@@ -66,6 +67,15 @@ if (!existsSync(".env.local")) {
       `Added new vars to .env.local: ${missing.flatMap((b) => [...keysOf(b)]).join(", ")}`,
     );
   }
+}
+
+// a fresh master key for the saved api keys, only if theres none yet: replacing it would make every
+// key already saved locally unreadable
+const env = readFileSync(".env.local", "utf8");
+if (/^CREDENTIALS_KEY=""\s*$/m.test(env)) {
+  const key = randomBytes(32).toString("base64");
+  writeFileSync(".env.local", env.replace(/^CREDENTIALS_KEY=""\s*$/m, `CREDENTIALS_KEY="${key}"`));
+  console.log("Generated CREDENTIALS_KEY in .env.local");
 }
 
 const compose = findCompose();

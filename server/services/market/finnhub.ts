@@ -1,4 +1,5 @@
-/** finnhub, the market data upstream. 1 key for the whole app (FINNHUB_API_KEY), sent in a header so
+/** finnhub, the market data upstream. the user's own key if they saved one, else 1 key for the whole
+ * app (FINNHUB_API_KEY), sent in a header so
  * it never ends up in a logged url. the free plan is 60 calls/min shared by every user, hence the
  * caches: a quote is good for 60s, a company profile for a day */
 
@@ -18,8 +19,13 @@ export class UnknownTickerError extends WidgetError {
   }
 }
 
-async function getJson(path: string, query: Record<string, string>, signal: AbortSignal) {
-  const key = process.env.FINNHUB_API_KEY;
+async function getJson(
+  path: string,
+  query: Record<string, string>,
+  signal: AbortSignal,
+  ownKey?: string,
+) {
+  const key = ownKey ?? process.env.FINNHUB_API_KEY;
   if (!key) throw new WidgetError("Market data isn't configured on this server.");
 
   const url = new URL(`${BASE_URL}${path}`);
@@ -93,12 +99,13 @@ const quoteCache = ttlCache<Quote>(60_000);
 // never expires on purpose: the whole point is to still have something when finnhub is down
 const lastGood = new Map<string, Quote>();
 
-export async function quote(symbol: string, signal: AbortSignal): Promise<Quote> {
+// prices arent personal, so the caches are shared whichever key fetched them
+export async function quote(symbol: string, signal: AbortSignal, ownKey?: string): Promise<Quote> {
   const hit = quoteCache.get(symbol);
   if (hit) return hit;
 
   try {
-    const q = QuoteResponse.parse(await getJson("/quote", { symbol }, signal));
+    const q = QuoteResponse.parse(await getJson("/quote", { symbol }, signal, ownKey));
     // an unknown symbol isnt an error for finnhub, it answers all zeros
     if (q.t === 0 && q.c === 0) throw new UnknownTickerError(symbol);
 
@@ -157,13 +164,17 @@ function shortExchange(exchange = ""): string | null {
 const profileCache = ttlCache<Profile>(24 * 60 * 60_000);
 
 /** cosmetic only: if finnhub fails here the card still shows the ticker w/o a logo, never an error */
-export async function profile(symbol: string, signal: AbortSignal): Promise<Profile> {
+export async function profile(
+  symbol: string,
+  signal: AbortSignal,
+  ownKey?: string,
+): Promise<Profile> {
   const hit = profileCache.get(symbol);
   if (hit) return hit;
 
   const fallback: Profile = { name: symbol, logo: null, exchange: null, currency: "USD" };
   try {
-    const p = ProfileResponse.parse(await getJson("/stock/profile2", { symbol }, signal));
+    const p = ProfileResponse.parse(await getJson("/stock/profile2", { symbol }, signal, ownKey));
     const result: Profile = {
       name: p.name || symbol,
       // only https logos, the page loads them straight from finnhub's cdn
