@@ -135,6 +135,19 @@ export const auth = betterAuth({
           throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
         }
       }
+      //same rules for a new password, w/ the username and email of the signed in user
+      if (ctx.path === "/change-password") {
+        const session = await getSessionFromCtx(ctx);
+        const newPassword = ctx.body?.newPassword as string | undefined;
+        const reason =
+          session &&
+          newPassword &&
+          weakPasswordReason(newPassword, {
+            username: session.user.username ?? undefined,
+            email: session.user.email,
+          });
+        if (reason) throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
+      }
     }),
   },
   rateLimit: {
@@ -145,6 +158,11 @@ export const auth = betterAuth({
         max: 5,
       },
       "/sign-in/email": {
+        window: 60,
+        max: 5,
+      },
+      //it checks the current password, so it's a login attempt too
+      "/change-password": {
         window: 60,
         max: 5,
       },

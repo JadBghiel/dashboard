@@ -8,16 +8,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { locationState } from "@/server/user-location";
 import { displaySettings } from "@/server/user-settings";
 import { DeleteAccountCard } from "@/components/settings/delete-account";
+import { SecurityCard } from "@/components/settings/security-card";
+import { currentUserId } from "@/server/auth/current-user";
+import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Settings & privacy" };
 
 export default async function SettingsPage() {
   const head = await headers();
   const jar = await cookies();
-  const [display, { location, consent }] = await Promise.all([
+  const [display, { location, consent }, userId] = await Promise.all([
     displaySettings(head),
     locationState(head, (name) => jar.get(name)?.value),
+    currentUserId(head),
   ]);
+  // a google only account has no "credential" row, so no password to change
+  const hasPassword =
+    !!userId &&
+    !!(await db.account.findFirst({
+      where: { userId, providerId: "credential" },
+      select: { id: true },
+    }));
 
   return (
     <div className="space-y-8">
@@ -59,6 +70,7 @@ export default async function SettingsPage() {
           )}
         </CardContent>
       </Card>
+      {display.signedIn && <SecurityCard hasPassword={hasPassword} />}
       {display.signedIn && <DeleteAccountCard />}
       <PrivacyNotice />
     </div>
