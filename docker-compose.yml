@@ -19,9 +19,10 @@ services:
 
   mailpit:
     image: axllent/mailpit:latest
+    # only the inbox ui on the host, the server reaches smtp (1025) inside the compose network. not
+    # publishing 1025 here also lets this stack start while docker-compose.dev.yml is up
     ports:
       - "8025:8025"
-      - "1025:1025"
 
   server:
     build: .

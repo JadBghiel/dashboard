@@ -21,13 +21,21 @@ export function LogInForm({ googleEnabled }: { googleEnabled: boolean }) {
     setError(null);
     //1 field for both: an @ means an email, usernames can't contain one
     const id = login.trim();
+    //better-auth sends the browser here after a successful login, and the fresh confirmation link
+    //of an unverified one too. the page forwards to the dashboard unless the link failed
+    const callbackURL = "/verify-email?from=login";
     const { error } = id.includes("@")
-      ? await authClient.signIn.email({ email: id, password })
-      : await authClient.signIn.username({ username: id, password });
+      ? await authClient.signIn.email({ email: id, password, callbackURL })
+      : await authClient.signIn.username({ username: id, password, callbackURL });
 
     setLoading(false);
     if (error) {
-      setError(error.message ?? "Something went wrong.");
+      //right password but unconfirmed email: the server just mailed a new link
+      setError(
+        error.code === "EMAIL_NOT_VERIFIED"
+          ? "Your email isn't confirmed yet. We sent you a new link, check your inbox."
+          : (error.message ?? "Something went wrong."),
+      );
       return;
     }
     router.push("/dashboard");

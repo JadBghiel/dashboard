@@ -5,9 +5,16 @@ import { APIError } from "better-auth/api";
 import { createAuthMiddleware } from "better-auth/api";
 import { db } from "@/server/db";
 import { sendMail } from "./email";
-import { COMMON_PASSWORDS } from "./common-passwords";
+import { weakPasswordReason } from "./common-passwords";
 
 const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"; //localhost fallback
+
+//localhost and 127.0.0.1 are the same server, but a browser sends a different origin for each. trust
+//both, or the graded stack opened at 127.0.0.1:8080 fails every login once it has a cookie
+const appOrigins = [appUrl];
+if (new URL(appUrl).hostname === "localhost") {
+  appOrigins.push(appUrl.replace("//localhost", "//127.0.0.1"));
+}
 
 // google sign in only when both values are set, so the docker stack (no oauth client) starts clean
 // and the auth pages hide the button instead of showing one that fails
@@ -25,7 +32,7 @@ function mailInBackground(to: string, subject: string, html: string) {
 
 export const auth = betterAuth({
   baseURL: appUrl,
-  trustedOrigins: [appUrl],
+  trustedOrigins: appOrigins,
   secret: process.env.BETTER_AUTH_SECRET, //we obviously don't use appUrl for the secret
   //the same prisma client as the rest of the server, a 2nd one would open a 2nd connection pool
   database: prismaAdapter(db, { provider: "postgresql" }),
@@ -36,6 +43,9 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
+    //an unverified login (right password only) gets a fresh link, so a lost or expired mail is never
+    //a dead end. the sign in rate limit keeps it from being used to spam
+    sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       mailInBackground(
@@ -81,15 +91,19 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      //we check if the password they used to register is in the common-passwords
+      //we check if the password they used to register is too easy to guess
       if (ctx.path === "/sign-up/email") {
         //we can't put it in the databaseHooks cuz they only see the password hash
         const password = ctx.body?.password as string | undefined;
-        if (password && COMMON_PASSWORDS.has(password.toLowerCase())) {
-          throw new APIError("UNPROCESSABLE_ENTITY", {
-            //error 422 means that the syntax is correct, but the contained data is not
-            message: "This password is too common. Please choose a different one.",
+        const reason =
+          password &&
+          weakPasswordReason(password, {
+            username: ctx.body?.username as string | undefined,
+            email: ctx.body?.email as string | undefined,
           });
+        if (reason) {
+          //error 422 means that the syntax is correct, but the contained data is not
+          throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
         }
       }
     }),

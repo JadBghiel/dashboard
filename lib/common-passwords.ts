@@ -208,3 +208,42 @@ export const COMMON_PASSWORDS = new Set(
     "forever",
   ].map((p) => p.toLowerCase()),
 );
+
+/** why a sign up password is too easy to guess, null when it's fine. the 12 char minimum already
+ * rules out the list as typed, so this also catches what people do to reach 12 characters:
+ * "password1234", "qwerty123456!", "123456789012", "aaaaaaaaaaaa", or their own username */
+export function weakPasswordReason(
+  password: string,
+  { username, email }: { username?: string; email?: string },
+): string | null {
+  const lower = password.toLowerCase();
+
+  // a common password, as is or followed by only digits and symbols
+  for (const common of COMMON_PASSWORDS) {
+    if (
+      common.length >= 4 &&
+      lower.startsWith(common) &&
+      !/[a-z]/.test(lower.slice(common.length))
+    ) {
+      return "This password is too common. Please choose a different one.";
+    }
+  }
+  if (COMMON_PASSWORDS.has(lower)) {
+    return "This password is too common. Please choose a different one.";
+  }
+
+  // 888888888888, abababababab
+  if (new Set(lower).size < 4) {
+    return "This password repeats the same few characters. Please choose a different one.";
+  }
+
+  // the username or the part of the email before the @, both are public to anyone guessing
+  const personal = [username, email?.split("@")[0]].filter(
+    (s): s is string => !!s && s.length >= 4,
+  );
+  if (personal.some((s) => lower.includes(s.toLowerCase()))) {
+    return "Your password can't contain your username or email.";
+  }
+
+  return null;
+}
