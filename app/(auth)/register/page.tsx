@@ -19,7 +19,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await authClient.signUp.email({ name, username, email, password, callbackURL: "/verify-email" });
+    const { error } = await authClient.signUp.email({
+      name,
+      username,
+      email,
+      password,
+      callbackURL: "/verify-email",
+    });
 
     setLoading(false);
     if (error) {
@@ -39,68 +45,89 @@ export default function RegisterPage() {
       </div>
     );
   }
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h1 className="text-xl font-semibold">Register</h1>
 
-      <div className="space-y-1">
-        <label htmlFor="name" className="text-sm font-medium">
-          Name
-        </label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="username" className="text-sm font-medium">
-          Username
-        </label>
-        <Input
-          id="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          minLength={3}
-          maxLength={30}
-        />
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
-        <Input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <Input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={12}
-        />
-      </div>
-      {error && (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
+  return (
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <h1 className="text-xl font-semibold">Register</h1>
+
+        <div className="space-y-1">
+          <label htmlFor="name" className="text-sm font-medium">
+            Name
+          </label>
+          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="username" className="text-sm font-medium">
+            Username
+          </label>
+          <Input
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            minLength={3}
+            maxLength={30}
+          />
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="email" className="text-sm font-medium">
+            Email
+          </label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="password" className="text-sm font-medium">
+            Password
+          </label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={12}
+          />
+        </div>
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Creating account..." : "Register"}
+        </Button>
+        <p className="text-muted-foreground text-center text-sm">
+          Already have an account?{" "}
+          <Link href="/log-in" className="underline">
+            Log in
+          </Link>
         </p>
-      )}
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Creating account..." : "Register"}
+      </form>
+
+      <div className="relative my-4">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background text-muted-foreground px-2">Or</span>
+        </div>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" })}
+      >
+        Continue with Google
       </Button>
-      <p className="text-muted-foreground text-center text-sm">
-        Already have an account?{" "}
-        <Link href="/log-in" className="underline">
-          Log in
-        </Link>
-      </p>
-    </form>
+    </>
   );
 }
