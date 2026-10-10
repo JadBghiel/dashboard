@@ -27,10 +27,18 @@ export const googleEnabled = Boolean(
 //that timing difference leaks which emails exist. after() and not a bare promise bc on vercel the
 //function can be frozen once the response is out, a mail still in flight would never leave. outside
 //a request (the tests) there is no after(), the plain promise is enough there
+//only what explains the failure. the raw error of the sendgrid client carries the request config,
+//its Authorization header included, logging it as is would print the api key in the logs
+function mailError(err: unknown) {
+  const e = err as { code?: number | string; message?: string; response?: { body?: unknown } };
+  const detail = e.response?.body ? ` ${JSON.stringify(e.response.body)}` : "";
+  return `${e.code ?? ""} ${e.message ?? String(err)}${detail}`.trim();
+}
+
 function mailInBackground(to: string, subject: string, html: string) {
   const send = () =>
     sendMail({ to, subject, html }).catch((err) => {
-      console.error(`Failed to send "${subject}" mail:`, err);
+      console.error(`Failed to send "${subject}" mail: ${mailError(err)}`);
     });
   try {
     after(send);
@@ -144,7 +152,34 @@ export const auth = betterAuth({
       },
     },
   },
+  account: {
+    accountLinking: {
+      //google signing in w/ the email of an account that was never confirmed: google just proved
+      //the email is theirs, so the account is linked instead of refused. the hijack this default
+      //protects against (someone pre-registering your email w/ their password) is closed by the
+      //account hook below, which drops that password on the link
+      requireLocalEmailVerified: false,
+    },
+  },
   databaseHooks: {
+    account: {
+      create: {
+        after: async (account) => {
+          if (account.providerId === "credential") return;
+          const user = await db.user.findUnique({
+            where: { id: account.userId },
+            select: { emailVerified: true },
+          });
+          //linked to an unconfirmed account: whoever set its password never proved the email,
+          //their password goes, the owner logs in w/ google (better-auth marks the email verified)
+          if (user && !user.emailVerified) {
+            await db.account.deleteMany({
+              where: { userId: account.userId, providerId: "credential" },
+            });
+          }
+        },
+      },
+    },
     //this runs before better-auth inserts a new user row
     user: {
       create: {

@@ -20,7 +20,14 @@ export function GoogleButton() {
         type="button"
         variant="outline"
         className="w-full"
-        onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" })}
+        onClick={() =>
+          authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/dashboard",
+            //a refused sign in comes back to the log in page w/ ?error=, which says why
+            errorCallbackURL: "/log-in",
+          })
+        }
       >
         Continue with Google
       </Button>
