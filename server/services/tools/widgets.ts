@@ -1,5 +1,5 @@
-/** the tools widgets. translator and email_checker are interactive: their fetch only returns the
- * config the card needs, the actual work goes through /api/tools/translate and /api/tools/email-check */
+/** the tools widgets. the translator is interactive: its fetch only returns the config the card
+ * needs, the actual work goes through /api/tools/translate */
 
 import { z } from "zod";
 
@@ -25,6 +25,7 @@ export type HolidaysPayload = z.infer<typeof HolidaysPayload>;
 
 export const holidaysWidget = defineWidget({
   id: "public_holidays",
+  usesLocation: true,
   name: "Public holidays",
   description: "The next public holidays, in your country or any other",
   params: z.object({
@@ -32,7 +33,6 @@ export const holidaysWidget = defineWidget({
     country: z.string().trim().max(2).default(""),
     count: z.number().int().min(1).max(10).default(5),
   }),
-  sizes: ["1x1"],
   refresh: { default: 86_400, min: 3600 },
   cache: { ttl: 86_400 },
   payload: HolidaysPayload,
@@ -62,7 +62,6 @@ export const translatorWidget = defineWidget({
     from: z.enum(languageCodes).default("en"),
     to: z.enum(languageCodes).default("fr"),
   }),
-  sizes: ["1x1", "2x1"],
   // nothing to refresh, the text is what changes
   refresh: { default: 86_400, min: 3600 },
   cache: { ttl: 86_400 },
@@ -73,27 +72,6 @@ export const translatorWidget = defineWidget({
       to: params.to,
       languages: Object.entries(LANGUAGES).map(([code, name]) => ({ code, name })),
     };
-  },
-});
-
-// ---- email checker ----
-
-export const EmailCheckerPayload = z.object({ rejectDisposable: z.boolean() });
-
-export const emailCheckerWidget = defineWidget({
-  id: "email_checker",
-  name: "Email checker",
-  description: "Check an address is well formed, can receive mail and isn't a throwaway",
-  params: z.object({
-    // a throwaway address counts as invalid
-    reject_disposable: z.boolean().default(true),
-  }),
-  sizes: ["1x1"],
-  refresh: { default: 86_400, min: 3600 },
-  cache: { ttl: 86_400 },
-  payload: EmailCheckerPayload,
-  async fetch({ params }) {
-    return { rejectDisposable: params.reject_disposable };
   },
 });
 
@@ -126,7 +104,6 @@ export const onThisDayWidget = defineWidget({
     count: z.number().int().min(1).max(10).default(5),
     language: z.enum(WIKI_LANGUAGES).default("en"),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 3600, min: 600 },
   cache: { ttl: 3600 },
   payload: OnThisDayPayload,
