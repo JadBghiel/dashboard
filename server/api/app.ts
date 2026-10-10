@@ -12,45 +12,23 @@ import { aboutRoute, buildAbout, clientHost } from "./routes/about";
 import {
   deleteLocation,
   deleteLocationRoute,
+  consentRoute,
   getLocation,
   getLocationRoute,
+  putConsent,
   putLocation,
   putLocationRoute,
   searchLocation,
   searchLocationRoute,
 } from "./routes/location";
 import {
-  addCrypto,
-  addCryptoRoute,
   cryptoSearch,
   cryptoSearchRoute,
-  getCrypto,
-  getCryptoRoute,
-  removeCrypto,
-  removeCryptoRoute,
-  reorderCrypto,
-  reorderCryptoRoute,
-  addToWatchlist,
-  addToWatchlistRoute,
-  getWatchlist,
-  getWatchlistRoute,
   quoteDetail,
   quoteRoute,
-  removeFromWatchlist,
-  removeFromWatchlistRoute,
-  reorderWatchlist,
-  reorderWatchlistRoute,
   search,
   searchRoute,
 } from "./routes/market";
-import {
-  deleteNewsPrefs,
-  deleteNewsPrefsRoute,
-  getNewsPrefs,
-  getNewsPrefsRoute,
-  putNewsPrefs,
-  putNewsPrefsRoute,
-} from "./routes/news";
 import {
   beeGet,
   beeGetRoute,
@@ -71,16 +49,36 @@ import {
   wordlePlayRoute,
 } from "./routes/games";
 import {
-  deleteLayout,
-  deleteLayoutRoute,
-  getLayout,
-  getLayoutRoute,
-  putLayout,
-  putLayoutRoute,
-} from "./routes/layout";
+  createInstanceHandler,
+  createInstanceRoute,
+  deleteInstanceHandler,
+  deleteInstanceRoute,
+  listInstancesHandler,
+  listInstancesRoute,
+  reorderInstancesHandler,
+  reorderInstancesRoute,
+  updateInstanceHandler,
+  updateInstanceRoute,
+} from "./routes/instances";
 import { pingRoute } from "./routes/ping";
 import { listServices, servicesRoute } from "./routes/services";
-import { emailCheck, emailCheckRoute, translateRoute, translateText } from "./routes/tools";
+import {
+  getSettings,
+  getSettingsRoute,
+  updateSettings,
+  updateSettingsRoute,
+} from "./routes/settings";
+import { translateRoute, translateText } from "./routes/tools";
+import { exportData, exportRoute } from "./routes/account";
+import {
+  deleteKeyRoute,
+  listKeys,
+  listKeysRoute,
+  putKey,
+  removeKey,
+  saveKeyRoute,
+} from "./routes/credentials";
+import { rateLimit } from "@/server/rate-limit";
 import { widgetData, widgetDataRoute } from "./routes/widgets";
 
 // basePath bc the next catch all hands us the full url, /api included
@@ -104,6 +102,14 @@ const app = new OpenAPIHono({
 app.onError(onError);
 app.notFound(notFound);
 
+// before the routes, so a request over the limit never reaches an upstream. a full dashboard is
+// ~15 widget fetches, the timer and the refresh btns stay far under these
+app.use("/widgets/*", rateLimit("widget", 150, 60));
+app.use("/tools/translate", rateLimit("translation", 30, 60));
+app.use("/location/search", rateLimit("city search", 60, 60));
+app.use("/market/search", rateLimit("ticker search", 60, 60));
+app.use("/market/crypto-search", rateLimit("coin search", 60, 60));
+
 const routes = app
   .openapi(pingRoute, (c) =>
     c.json({ message: "pong" as const, time: Math.floor(Date.now() / 1000) }, 200),
@@ -115,23 +121,16 @@ const routes = app
   .openapi(putLocationRoute, putLocation)
   .openapi(deleteLocationRoute, deleteLocation)
   .openapi(searchLocationRoute, searchLocation)
+  .openapi(consentRoute, putConsent)
+  .openapi(exportRoute, exportData)
+  .openapi(listKeysRoute, listKeys)
+  .openapi(saveKeyRoute, putKey)
+  .openapi(deleteKeyRoute, removeKey)
   .openapi(widgetDataRoute, widgetData)
   .openapi(searchRoute, search)
   .openapi(quoteRoute, quoteDetail)
-  .openapi(getWatchlistRoute, getWatchlist)
-  .openapi(addToWatchlistRoute, addToWatchlist)
-  .openapi(removeFromWatchlistRoute, removeFromWatchlist)
-  .openapi(reorderWatchlistRoute, reorderWatchlist)
   .openapi(cryptoSearchRoute, cryptoSearch)
-  .openapi(getCryptoRoute, getCrypto)
-  .openapi(addCryptoRoute, addCrypto)
-  .openapi(reorderCryptoRoute, reorderCrypto)
-  .openapi(removeCryptoRoute, removeCrypto)
   .openapi(translateRoute, translateText)
-  .openapi(emailCheckRoute, emailCheck)
-  .openapi(getNewsPrefsRoute, getNewsPrefs)
-  .openapi(putNewsPrefsRoute, putNewsPrefs)
-  .openapi(deleteNewsPrefsRoute, deleteNewsPrefs)
   .openapi(wordleGetRoute, wordleGet)
   .openapi(wordlePlayRoute, wordlePlay)
   .openapi(flagsGetRoute, flagsGet)
@@ -141,9 +140,14 @@ const routes = app
   .openapi(best2048GetRoute, best2048Get)
   .openapi(best2048PutRoute, best2048Put)
   .openapi(servicesRoute, listServices)
-  .openapi(getLayoutRoute, getLayout)
-  .openapi(putLayoutRoute, putLayout)
-  .openapi(deleteLayoutRoute, deleteLayout);
+  // the order route before the :id ones, so "order" isnt read as an id
+  .openapi(reorderInstancesRoute, reorderInstancesHandler)
+  .openapi(listInstancesRoute, listInstancesHandler)
+  .openapi(createInstanceRoute, createInstanceHandler)
+  .openapi(updateInstanceRoute, updateInstanceHandler)
+  .openapi(deleteInstanceRoute, deleteInstanceHandler)
+  .openapi(getSettingsRoute, getSettings)
+  .openapi(updateSettingsRoute, updateSettings);
 
 // an image, not json, so outside the openapi routes
 app.get("/games/flags/today.png", flagImage);

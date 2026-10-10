@@ -1,14 +1,13 @@
-/** POST /api/widgets/{service}/{widget}/data: run 1 widget w/ the given params for the current
- * user location widget form will use to preview, #22 adds the instance based batch endpoint on the same runWidget */
+/** POST /api/widgets/{service}/{widget}/data: run 1 widget w/ the given params, for where the user
+ * is and w/ their own key if they saved one. every card fetches through here */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import { getCookie } from "hono/cookie";
 
-import { parseJsonCookie } from "@/server/cookies";
-import { CRYPTO_COOKIE, parseCryptoList } from "@/server/crypto-watchlist";
-import { LOCATION_COOKIE, resolveLocation } from "@/server/location";
-import { parseWatchlist, WATCHLIST_COOKIE } from "@/server/market-watchlist";
-import { NEWS_COOKIE, NewsPrefs } from "@/server/news-prefs";
+import { userLocation } from "@/server/user-location";
+import { currentUserId } from "@/server/auth/current-user";
+import { keyFor } from "@/server/credential-store";
+import type { ServiceDef, WidgetCredentials } from "@/server/registry/define";
 import { registry } from "@/server/registry";
 import { runWidget } from "@/server/registry/run";
 
@@ -36,7 +35,8 @@ export const widgetDataRoute = createRoute({
       description: "the widget payload, its shape depends on the widget",
       content: {
         "application/json": {
-          schema: z.object({ data: z.unknown(), fetchedAt: z.number().int() }),
+          // stale: the upstream is down, this is the last good answer
+          schema: z.object({ data: z.unknown(), fetchedAt: z.number().int(), stale: z.boolean() }),
         },
       },
     },
@@ -55,25 +55,23 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   if (!service || !widget) {
     return c.json({ code: "not_found", message: `No widget ${widgetId} in ${serviceId}.` }, 404);
   }
-  // linked accounts arrive w/ #19. key services run on the app key, their fetcher says so if its
-  // missing, a user's own key comes w/ the credential store (#17)
+  // linked accounts arrive w/ #19. a key service runs on the user's own key when they saved one,
+  // else on the app key (#17)
   if (service.auth === "oauth") {
     return c.json({ code: "forbidden", message: `Link your ${service.name} account first.` }, 403);
   }
 
-  const result = await runWidget(widget, c.req.valid("json").params, {
-    location: resolveLocation(getCookie(c, LOCATION_COOKIE), c.req.raw.headers),
-    prefs: {
-      watchlist: parseWatchlist(getCookie(c, WATCHLIST_COOKIE)),
-      crypto: parseCryptoList(getCookie(c, CRYPTO_COOKIE)),
-      news: parseJsonCookie(getCookie(c, NEWS_COOKIE), NewsPrefs),
-    },
-    credentials: null,
+  const result = await runWidget(serviceId, widget, c.req.valid("json").params, {
+    location: await userLocation(c.req.raw.headers, (name) => getCookie(c, name)),
+    credentials: await ownKey(c.req.raw.headers, service),
     signal: c.req.raw.signal,
   });
 
   if (result.ok) {
-    return c.json({ data: result.data, fetchedAt: Math.floor(Date.now() / 1000) }, 200);
+    return c.json(
+      { data: result.data, fetchedAt: Math.floor(Date.now() / 1000), stale: result.stale },
+      200,
+    );
   }
   if (result.reason === "invalid_params") {
     return c.json({ code: "invalid_request", message: result.message }, 400);
@@ -83,3 +81,10 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   }
   return c.json({ code: "upstream_error", message: result.message }, 502);
 };
+
+async function ownKey(headers: Headers, service: ServiceDef): Promise<WidgetCredentials> {
+  if (service.auth !== "api_key") return null;
+  const userId = await currentUserId(headers);
+  const apiKey = userId && (await keyFor(userId, service.id));
+  return apiKey ? { kind: "api_key", apiKey } : null;
+}
