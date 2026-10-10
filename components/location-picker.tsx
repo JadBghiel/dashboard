@@ -1,9 +1,12 @@
 "use client";
 
-/** where the weather is for, the choice is saved in an httpOnly cookie through /api/location,
- * safer this way, its also reshred after any change so location refetches */
+/** where the weather is for: a city search, or the device position. saved through /api/location (the
+ * account when signed in, an httpOnly cookie for a visitor), the page refreshes after any change so
+ * the widgets refetch. the device position is only asked after the user read what it's used for
+ * and said yes (gdpr), the browser's own popup comes after that */
 
 import { LoaderCircle, LocateFixed, MapPin, Search } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -35,6 +38,8 @@ export function LocationPicker({ location }: { location: UserLocation }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // the disclaimer step before the browser is asked for the position
+  const [asking, setAsking] = useState(false);
 
   // debounced so typing "madrid" is 1 search, not 6
   useEffect(() => {
@@ -80,6 +85,7 @@ export function LocationPicker({ location }: { location: UserLocation }) {
     setQuery("");
     setPlaces([]);
     setMessage(null);
+    setAsking(false);
     router.refresh();
   }
 
@@ -87,11 +93,17 @@ export function LocationPicker({ location }: { location: UserLocation }) {
     if (!("geolocation" in navigator)) {
       return setMessage("Your browser can't share its location.");
     }
+    setAsking(false);
     setBusy(true);
     setMessage(null);
     navigator.geolocation.getCurrentPosition(
       // open-meteo has no reverse geocoding, so a precise position gets a generic name
-      (pos) => save({ name: "Your location", lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      // asking for the device position is a yes to using the location, the country comes from the
+      // connection then (no reverse geocoding)
+      async (pos) => {
+        await api.location.consent.$put({ json: { allow: true } }).catch(() => null);
+        save({ name: "Your location", lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
       (err) => {
         setBusy(false);
         setMessage(
@@ -122,10 +134,46 @@ export function LocationPicker({ location }: { location: UserLocation }) {
           <p className="text-muted-foreground text-xs">{SOURCE_LABEL[location.source]}</p>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={locateMe} disabled={busy}>
-          {busy ? <LoaderCircle className="animate-spin" /> : <LocateFixed />}
-          Use my current location
-        </Button>
+        {asking ? (
+          <div
+            role="group"
+            aria-labelledby="locate-title"
+            className="bg-muted/50 space-y-2 rounded-lg border p-3 text-sm"
+          >
+            <p id="locate-title" className="font-medium">
+              Share your position?
+            </p>
+            <p className="text-muted-foreground text-xs">
+              We ask your browser for your position once. We save it as your city and use it only
+              for your widgets: the weather, the holidays and the news. You can change it or remove
+              it at any time.{" "}
+              <Link
+                href="/settings#privacy"
+                className="text-foreground underline underline-offset-4"
+              >
+                Privacy
+              </Link>
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={locateMe}>
+                Allow
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setAsking(true)}
+            disabled={busy}
+          >
+            {busy ? <LoaderCircle className="animate-spin" /> : <LocateFixed />}
+            Use my current location
+          </Button>
+        )}
 
         <div className="relative">
           <Search

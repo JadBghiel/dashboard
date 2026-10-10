@@ -1,11 +1,13 @@
-/** user location: read, save, forget, and a city search to pick one, in an
- * httpOnly cookie */
+/** user location: read, save, forget, a city search to pick one, and the consent to guess it from
+ * the connection. in the user's settings in the db, or httpOnly cookies for a visitor */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
 
-import { LOCATION_COOKIE, SavedLocation, resolveLocation } from "@/server/location";
+import { currentUserId } from "@/server/auth/current-user";
+import { CONSENT_COOKIE, LOCATION_COOKIE, SavedLocation, resolveSaved } from "@/server/location";
+import { locationState, saveConsentOf, saveLocationOf } from "@/server/user-location";
 import { prefCookie } from "@/server/cookies";
 import { geocode } from "@/server/services/weather/open-meteo";
 
@@ -51,6 +53,20 @@ export const deleteLocationRoute = createRoute({
   responses: { 200: locationOk },
 });
 
+export const consentRoute = createRoute({
+  method: "put",
+  path: "/location/consent",
+  tags: ["location"],
+  summary: "allow or refuse guessing your city from your connection",
+  request: {
+    body: {
+      required: true,
+      content: { "application/json": { schema: z.object({ allow: z.boolean() }) } },
+    },
+  },
+  responses: { 200: locationOk },
+});
+
 export const searchLocationRoute = createRoute({
   method: "get",
   path: "/location/search",
@@ -82,21 +98,40 @@ export const searchLocationRoute = createRoute({
   },
 });
 
-const current = (c: Context) => resolveLocation(getCookie(c, LOCATION_COOKIE), c.req.raw.headers);
+const state = (c: Context) => locationState(c.req.raw.headers, (name) => getCookie(c, name));
 
-export const getLocation: RouteHandler<typeof getLocationRoute> = (c) => c.json(current(c), 200);
+export const getLocation: RouteHandler<typeof getLocationRoute> = async (c) =>
+  c.json((await state(c)).location, 200);
 
-export const putLocation: RouteHandler<typeof putLocationRoute> = (c) => {
+// a signed in user's city goes in their settings in the db, a visitor's in a cookie
+export const putLocation: RouteHandler<typeof putLocationRoute> = async (c) => {
   const saved = c.req.valid("json");
-  setCookie(c, LOCATION_COOKIE, JSON.stringify(saved), prefCookie(c.req.url));
+  const userId = await currentUserId(c.req.raw.headers);
+  if (userId) await saveLocationOf(userId, saved);
+  else setCookie(c, LOCATION_COOKIE, JSON.stringify(saved), prefCookie(c.req.url));
   // resolved like any later request will be, so the country fallback is the same
-  return c.json(resolveLocation(JSON.stringify(saved), c.req.raw.headers), 200);
+  const { consent } = await state(c);
+  return c.json(resolveSaved(saved, c.req.raw.headers, consent === true), 200);
 };
 
-export const deleteLocation: RouteHandler<typeof deleteLocationRoute> = (c) => {
-  deleteCookie(c, LOCATION_COOKIE, { path: "/" });
-  // resolved w/o the cookie we just removed, not from the request that still carries it
-  return c.json(resolveLocation(undefined, c.req.raw.headers), 200);
+export const deleteLocation: RouteHandler<typeof deleteLocationRoute> = async (c) => {
+  const userId = await currentUserId(c.req.raw.headers);
+  if (userId) await saveLocationOf(userId, null);
+  else deleteCookie(c, LOCATION_COOKIE, { path: "/" });
+  // resolved w/o what we just removed, not from the request that still carries it
+  const { consent } = await state(c);
+  return c.json(resolveSaved(null, c.req.raw.headers, consent === true), 200);
+};
+
+export const putConsent: RouteHandler<typeof consentRoute> = async (c) => {
+  const { allow } = c.req.valid("json");
+  const userId = await currentUserId(c.req.raw.headers);
+  if (userId) await saveConsentOf(userId, allow);
+  else setCookie(c, CONSENT_COOKIE, allow ? "yes" : "no", prefCookie(c.req.url));
+  // the saved city stays first either way, the answer only changes the guess under it
+  const { location } = await state(c);
+  const saved = location.source === "saved" ? location : null;
+  return c.json(resolveSaved(saved, c.req.raw.headers, allow), 200);
 };
 
 export const searchLocation: RouteHandler<typeof searchLocationRoute> = async (c) => {
