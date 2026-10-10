@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { after } from "next/server";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, username } from "better-auth/plugins";
 import { APIError } from "better-auth/api";
@@ -22,12 +23,20 @@ export const googleEnabled = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
 );
 
-//fire and forget: awaiting the mail would make the response slower for real accounts, and that
-//timing difference leaks which emails exist
+//sent after the response: awaiting the mail would make the response slower for real accounts, and
+//that timing difference leaks which emails exist. after() and not a bare promise bc on vercel the
+//function can be frozen once the response is out, a mail still in flight would never leave. outside
+//a request (the tests) there is no after(), the plain promise is enough there
 function mailInBackground(to: string, subject: string, html: string) {
-  void sendMail({ to, subject, html }).catch((err) => {
-    console.error(`Failed to send "${subject}" mail:`, err);
-  });
+  const send = () =>
+    sendMail({ to, subject, html }).catch((err) => {
+      console.error(`Failed to send "${subject}" mail:`, err);
+    });
+  try {
+    after(send);
+  } catch {
+    void send();
+  }
 }
 
 export const auth = betterAuth({
