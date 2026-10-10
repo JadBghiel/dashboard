@@ -4,7 +4,7 @@
 import { services } from "../services";
 import { describeParams, type ParamSpec, type ServiceDef, type WidgetDef } from "./define";
 
-export type CatalogWidget = Pick<WidgetDef, "id" | "name" | "description" | "sizes" | "refresh"> & {
+export type CatalogWidget = Pick<WidgetDef, "id" | "name" | "description" | "refresh"> & {
   params: ParamSpec[];
 };
 
@@ -46,7 +46,6 @@ export function createRegistry(list: readonly ServiceDef[]) {
       id: w.id,
       name: w.name,
       description: w.description,
-      sizes: w.sizes,
       refresh: w.refresh,
       params: describeParams(w.id, w.params),
     })),

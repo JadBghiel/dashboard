@@ -27,7 +27,6 @@ export const currencyWidget = defineWidget({
     to: z.string().trim().max(60).default("USD,GBP,JPY"),
     amount: z.number().int().min(1).max(1_000_000_000).default(100),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 3600, min: 600 },
   cache: { ttl: 3600 },
   payload: CurrencyPayload,

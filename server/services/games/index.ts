@@ -20,7 +20,6 @@ export const wordleWidget = defineWidget({
     // greens stay in place, yellows must be reused
     hard_mode: z.boolean().default(false),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 3600, min: 600 },
   cache: { ttl: 3600 },
   payload: z.object({ number: z.number(), length: z.number(), maxGuesses: z.number() }),
@@ -38,7 +37,6 @@ export const flagGuesserWidget = defineWidget({
     // distance and direction to the answer after each miss
     hints: z.boolean().default(true),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 3600, min: 600 },
   cache: { ttl: 3600 },
   payload: z.object({ number: z.number(), maxGuesses: z.number(), countries: z.number() }),
@@ -55,7 +53,6 @@ export const spellingBeeWidget = defineWidget({
   params: z.object({
     min_length: z.number().int().min(4).max(5).default(4),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 3600, min: 600 },
   cache: { ttl: 3600 },
   payload: z.object({
@@ -80,7 +77,6 @@ export const game2048Widget = defineWidget({
     size: z.number().int().min(3).max(6).default(4),
     target: z.enum(["1024", "2048", "4096"]).default("2048"),
   }),
-  sizes: ["1x1", "2x1"],
   refresh: { default: 3600, min: 600 },
   cache: { ttl: 3600 },
   payload: z.object({ size: z.number(), target: z.number() }),

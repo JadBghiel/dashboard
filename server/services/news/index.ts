@@ -4,7 +4,7 @@
 import { z } from "zod";
 
 import { CountryCode } from "@/server/location";
-import { NEWS_LANGUAGES, NEWS_TOPICS, type NewsPrefs } from "@/server/news-prefs";
+import { NEWS_LANGUAGES, NEWS_TOPICS } from "@/server/news-prefs";
 import { defineService, defineWidget, WidgetError } from "@/server/registry/define";
 
 import { fetchFeed, languageFor, type Feed } from "./google-news";
@@ -37,9 +37,10 @@ const list = (s: string) =>
 
 export const headlinesWidget = defineWidget({
   id: "headlines",
+  usesLocation: true,
   name: "News",
   description: "Headlines from the topics and keywords you follow, in your country and language",
-  // every param empty = the user's saved preferences, the way an empty city means "where you are"
+  // empty topics and keywords = the top stories, empty country = where the user is
   params: z.object({
     // comma separated: world, local, business, technology, science, health, sports, entertainment
     topics: z.string().trim().max(120).default(""),
@@ -49,28 +50,24 @@ export const headlinesWidget = defineWidget({
     language: z.enum(NEWS_LANGUAGES).optional(),
     count: z.number().int().min(3).max(20).optional(),
   }),
-  sizes: ["1x1", "2x1", "2x2"],
   refresh: { default: 900, min: 300 },
   cache: { ttl: 600 },
   payload: HeadlinesPayload,
-  async fetch({ params, prefs, location, signal }) {
-    const saved: NewsPrefs | null = prefs.news;
-
-    const topicNames = params.topics ? list(params.topics) : (saved?.topics ?? []);
+  async fetch({ params, location, signal }) {
+    const topicNames = list(params.topics);
     const topics = topicNames.flatMap((t) =>
       (NEWS_TOPICS as readonly string[]).includes(t) ? [t as (typeof NEWS_TOPICS)[number]] : [],
     );
     if (topics.length < topicNames.length) throw new WidgetError("Unknown news topic.");
-    const keywords = (params.keywords ? list(params.keywords) : (saved?.keywords ?? [])).slice(
-      0,
-      5,
-    );
+    const keywords = list(params.keywords).slice(0, 5);
 
-    const rawCountry = params.country || saved?.country || location.country;
+    // empty = where the user is
+    const rawCountry = params.country || location.country;
     const country = CountryCode.safeParse(rawCountry);
     if (!country.success) throw new WidgetError("The country is a 2 letter code, like FR.");
-    const language = params.language ?? (saved?.language || languageFor(country.data));
-    const count = params.count ?? saved?.count ?? 12;
+    const language = params.language ?? languageFor(country.data);
+    // even, the feed is 2 columns wide
+    const count = params.count ?? 12;
 
     const feeds: Feed[] = [
       ...topics.map((topic) => ({ kind: "topic" as const, topic })),
@@ -149,7 +146,6 @@ export const worldEventsWidget = defineWidget({
     min_magnitude: z.number().int().min(4).max(7).default(5),
     show_natural: z.boolean().default(true),
   }),
-  sizes: ["2x1", "2x2"],
   refresh: { default: 600, min: 300 },
   cache: { ttl: 600 },
   payload: WorldEventsPayload,
@@ -189,7 +185,6 @@ export const liveTvWidget = defineWidget({
   params: z.object({
     channel: z.enum(Object.keys(LIVE_CHANNELS) as [ChannelId, ...ChannelId[]]).default("aljazeera"),
   }),
-  sizes: ["2x1"],
   refresh: { default: 86_400, min: 3600 },
   cache: { ttl: 86_400 },
   payload: LiveTvPayload,
