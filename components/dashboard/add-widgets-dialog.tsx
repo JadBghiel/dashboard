@@ -44,17 +44,18 @@ export function AddWidgetsDialog({
   // the widget being configured, null = the list
   const [picked, setPicked] = useState<string | null>(null);
 
-  function close(next: boolean) {
-    onOpenChange(next);
-    if (!next) setPicked(null);
-  }
+  const close = (next: boolean) => onOpenChange(next);
 
   const spec = picked ? specs[picked] : null;
   const keys = Object.keys(CARDS).filter((k) => specs[k]);
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent
+        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
+        // back to the list once the window has faded out, not during: no flash of the list on close
+        onCloseAutoFocus={() => setPicked(null)}
+      >
         {picked && spec ? (
           <>
             <DialogHeader>
@@ -108,6 +109,7 @@ export function AddWidgetsDialog({
                           <button
                             type="button"
                             onClick={() => setPicked(k)}
+                            data-cursor={`pick-${k}`}
                             className="hover:bg-muted/50 focus-visible:bg-muted/50 flex w-full items-center justify-between gap-4 px-3 py-2.5 text-left outline-none"
                           >
                             <span className="min-w-0">
