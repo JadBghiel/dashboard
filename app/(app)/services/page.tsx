@@ -1,13 +1,14 @@
 import { CircleCheck, KeyRound, Link2, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConnectAccount } from "@/components/services/connect-account";
 import { OwnKeyForm } from "@/components/services/own-key-form";
-import { currentUserId } from "@/server/auth/current-user";
+import { githubEnabled } from "@/lib/auth";
+import { requireUserId } from "@/server/auth/current-user";
 import { listHints } from "@/server/credential-store";
+import { linkedAccounts } from "@/server/linked-accounts";
 import { registry } from "@/server/registry";
 import type { ServiceCategory } from "@/server/registry/define";
 import { serviceStatus, type ServiceStatus } from "@/server/subscriptions";
@@ -25,6 +26,13 @@ function StatusBadge({ value, auth }: { value: ServiceStatus; auth: string }) {
     return (
       <Badge variant="outline" className="gap-1">
         <Link2 className="size-3" aria-hidden /> Needs an account
+      </Badge>
+    );
+  }
+  if (value === "linked") {
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <Link2 className="size-3 text-emerald-500" aria-hidden /> Ready, account connected
       </Badge>
     );
   }
@@ -54,11 +62,25 @@ function StatusBadge({ value, auth }: { value: ServiceStatus; auth: string }) {
   );
 }
 
-export default async function ServicesPage() {
+// better-auth's codes when a link is refused, it sends the browser back here w/ ?error=
+const LINK_ERRORS: Record<string, string> = {
+  access_denied: "GitHub connection was cancelled.",
+  unable_to_link_account: "GitHub didn't confirm your email. Verify it on GitHub, then try again.",
+  account_already_linked_to_different_user:
+    "This GitHub account is already connected to another user.",
+};
+
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ link_error?: string; error?: string }>;
+}) {
+  const { link_error, error } = await searchParams;
   const catalog = registry.catalog;
-  const userId = await currentUserId(await headers());
+  const userId = await requireUserId();
   // the user's saved keys, as their last 4 characters
-  const hints = new Map(userId ? (await listHints(userId)).map((k) => [k.serviceId, k.hint]) : []);
+  const hints = new Map((await listHints(userId)).map((k) => [k.serviceId, k.hint]));
+  const linked = await linkedAccounts(userId);
   const widgets = catalog.reduce((n, s) => n + s.widgets.length, 0);
 
   return (
@@ -69,6 +91,11 @@ export default async function ServicesPage() {
           {catalog.length} services, {widgets} widgets. The ones that need a key or an account are
           set up here.
         </p>
+        {link_error && (
+          <p role="alert" className="text-destructive text-sm">
+            {(error && LINK_ERRORS[error]) ?? "GitHub couldn't be connected, try again."}
+          </p>
+        )}
       </div>
 
       {SECTIONS.map((section) => {
@@ -95,7 +122,10 @@ export default async function ServicesPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <StatusBadge
-                      value={serviceStatus(registry.getService(s.id)!, hints.has(s.id))}
+                      value={serviceStatus(
+                        registry.getService(s.id)!,
+                        hints.has(s.id) || linked.has(s.id),
+                      )}
                       auth={s.auth}
                     />
                     <ul className="space-y-1 text-sm">
@@ -111,38 +141,26 @@ export default async function ServicesPage() {
                         serviceId={s.id}
                         label={s.key.label}
                         helpUrl={s.key.helpUrl}
-                        signedIn={!!userId}
                         hint={hints.get(s.id) ?? null}
                         // without a server key, removing yours locks the service again
                         appKey={serviceStatus(registry.getService(s.id)!, false) === "ready"}
                       />
                     )}
+                    {s.auth === "oauth" && (
+                      <ConnectAccount
+                        provider="github"
+                        name={s.name}
+                        accountId={linked.get(s.id) ?? null}
+                        enabled={githubEnabled}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               ))}
-              {section.id === "utility" && <GitHubPlaceholder />}
             </div>
           </section>
         );
       })}
     </div>
-  );
-}
-
-/** github needs oauth2 (#19, #26), not in the registry yet so about.json doesnt list it */
-function GitHubPlaceholder() {
-  return (
-    <Card className="shadow-soft border-dashed">
-      <CardHeader>
-        <CardTitle>GitHub</CardTitle>
-        <CardDescription>Your notifications, activity and profile. Coming soon.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <StatusBadge value="needs_account" auth="oauth" />
-        <Button variant="outline" size="sm" disabled>
-          <Link2 /> Connect with GitHub (OAuth2)
-        </Button>
-      </CardContent>
-    </Card>
   );
 }

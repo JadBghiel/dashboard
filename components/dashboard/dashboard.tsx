@@ -2,8 +2,7 @@
 
 /** the dashboard: the user's saved widgets, grouped in sections. holds the list, saves every change
  * through useInstances (add, options, refresh rate, order, remove) and puts each card in its
- * instance context so its gear and its own controls save to the right widget. w/ nobody signed in
- * it shows the default widgets read only, nothing to save to */
+ * instance context so its gear and its own controls save to the right widget */
 
 import { useState } from "react";
 
@@ -12,7 +11,6 @@ import {
   type InstanceView,
   type WidgetSpec,
 } from "@/components/widgets/instance-context";
-import { GitHubPlaceholderCard } from "@/components/widgets/github/github-placeholder-card";
 import { CARDS, SECTIONS } from "@/components/widgets/registry";
 
 import { AddWidgetsDialog } from "./add-widgets-dialog";
@@ -28,7 +26,6 @@ export function Dashboard({
   notice,
   initial,
   specs,
-  signedIn,
   locationKey,
   defaultOrder,
 }: {
@@ -38,7 +35,6 @@ export function Dashboard({
   notice?: React.ReactNode;
   initial: InstanceView[];
   specs: Record<string, Spec>;
-  signedIn: boolean;
   locationKey: string;
   // the widget keys in the default order, what reset puts back
   defaultOrder: string[];
@@ -63,7 +59,6 @@ export function Dashboard({
     <>
       <Toolbar
         heading={heading}
-        signedIn={signedIn}
         editing={editing}
         onToggleEditing={() => setEditing(!editing)}
         onAdd={() => setAdding(true)}
@@ -114,51 +109,31 @@ export function Dashboard({
                 editing={editing}
                 onReorder={(ids) => reorderSection(section.id, ids)}
                 onRemove={remove}
-                items={[
-                  ...visible.map((instance) => {
-                    const card = CARDS[key(instance)];
-                    const spec = specs[key(instance)];
-                    const onChange = (p: Record<string, unknown>) => quiet(instance.id, p);
-                    return {
-                      id: instance.id,
-                      label: spec.name,
-                      className: card.className,
-                      node: (
-                        <InstanceProvider
-                          value={
-                            signedIn
-                              ? {
-                                  instance,
-                                  spec,
-                                  notInSettings: card.notInSettings ?? [],
-                                  ExtraSettings: card.ExtraSettings,
-                                  save: (patch) => update(instance.id, patch),
-                                }
-                              : null
-                          }
-                        >
-                          {card.render(instance.params, {
-                            locationKey,
-                            onChange: signedIn ? onChange : () => {},
-                          })}
-                        </InstanceProvider>
-                      ),
-                    };
-                  }),
-                  // the github widget waits for oauth2 (#19, #26), shown as a fixed placeholder
-                  ...(section.id === "utility"
-                    ? [
-                        {
-                          id: "github-placeholder",
-                          label: "GitHub",
-                          fixed: true,
-                          // 4th, in the 1st row next to weather, stocks and crypto
-                          at: 3,
-                          node: <GitHubPlaceholderCard />,
-                        },
-                      ]
-                    : []),
-                ]}
+                items={visible.map((instance) => {
+                  const card = CARDS[key(instance)];
+                  const spec = specs[key(instance)];
+                  return {
+                    id: instance.id,
+                    label: spec.name,
+                    className: card.className,
+                    node: (
+                      <InstanceProvider
+                        value={{
+                          instance,
+                          spec,
+                          notInSettings: card.notInSettings ?? [],
+                          ExtraSettings: card.ExtraSettings,
+                          save: (patch) => update(instance.id, patch),
+                        }}
+                      >
+                        {card.render(instance.params, {
+                          locationKey,
+                          onChange: (p) => quiet(instance.id, p),
+                        })}
+                      </InstanceProvider>
+                    ),
+                  };
+                })}
               />
             )}
           </section>

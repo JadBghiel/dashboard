@@ -1,6 +1,11 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-// privacy lives at the bottom of settings & privacy now, old links land there
+import { PrivacyNotice } from "@/components/settings/privacy-notice";
+
+export const metadata: Metadata = { title: "Privacy" };
+
+// public, unlike the rest of the app: a visitor reads it before registering (gdpr). signed in, the
+// same notice is at the bottom of settings & privacy
 export default function PrivacyPage() {
-  redirect("/settings#privacy");
+  return <PrivacyNotice />;
 }

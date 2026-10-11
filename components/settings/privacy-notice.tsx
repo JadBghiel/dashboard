@@ -1,7 +1,8 @@
-/** the privacy notice, shown at the bottom of settings & privacy. kept in plain words, and in sync w/
+/** the privacy notice, shown at the bottom of settings & privacy and on its own at /privacy, the 1
+ * page a visitor can read before registering. kept in plain words, and in sync w/
  * what the app actually stores and sends */
 
-const UPDATED = "October 8, 2026";
+const UPDATED = "October 11, 2026";
 
 // every cookie the app sets, kept in sync w/ server/location.ts and server/api/routes/games.ts
 const COOKIES = [
@@ -20,6 +21,7 @@ const COOKIES = [
 const SERVER_SIDE = [
   ["Open-Meteo", "weather and city search"],
   ["Finnhub", "stock prices"],
+  ["GitHub", "your notifications and public repositories, only once you connect your account"],
   ["CoinGecko", "crypto prices"],
   ["Frankfurter (European Central Bank rates)", "currency rates"],
   ["Nager.Date", "public holidays"],
@@ -91,19 +93,21 @@ export function PrivacyNotice() {
             <span className="text-foreground font-medium">Your widgets</span>: which ones you use,
             their options, refresh rate and order.
           </li>
+          <li>
+            <span className="text-foreground font-medium">A connected GitHub account</span>: the
+            access token GitHub gives us, encrypted. It can only read your notifications and public
+            data, and disconnecting GitHub on the Services page deletes it.
+          </li>
         </ul>
-        <p>
-          Without an account nothing is stored on our side: your city, your location answer and your
-          game progress stay in cookies in your browser, and the theme in its local storage.
-        </p>
+        <p>Your game progress stays in cookies in your browser, never on our side.</p>
       </Section>
 
       <Section title="Your location">
         <p>
           Your location is only used to show the weather, the public holidays and the news for where
           you are. We guess your city from your connection only if you say yes, and you can change
-          that answer at any time in the location settings above. Until then, the dashboard uses
-          Madrid, or the city you pick yourself.
+          that answer at any time in Settings & privacy. Until then, the dashboard uses Madrid, or
+          the city you pick yourself.
         </p>
         <p>
           “Use my current location” asks your browser for your position once, saves it as your city,

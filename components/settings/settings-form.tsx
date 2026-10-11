@@ -30,13 +30,11 @@ const THEMES: { value: Theme; label: string }[] = [
 ];
 
 export function SettingsForm({
-  signedIn,
   location,
   consent: savedConsent,
   textSize: savedSize,
   theme: savedTheme,
 }: {
-  signedIn: boolean;
   location: UserLocation;
   // may the city be guessed from the connection (gdpr)
   consent: boolean;
@@ -102,8 +100,7 @@ export function SettingsForm({
         <CardHeader>
           <CardTitle>Location</CardTitle>
           <CardDescription>
-            Where the weather, the holidays and the news are for.{" "}
-            {signedIn ? "Saved to your account." : "Saved in this browser until you sign in."}
+            Where the weather, the holidays and the news are for. Saved to your account.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -137,11 +134,7 @@ export function SettingsForm({
       <Card className="shadow-soft">
         <CardHeader>
           <CardTitle>Display</CardTitle>
-          <CardDescription>
-            {signedIn
-              ? "Saved to your account, the same on every device."
-              : "Sign in to change the text size and keep your theme on every device."}
-          </CardDescription>
+          <CardDescription>Saved to your account, the same on every device.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <Choice
@@ -150,16 +143,8 @@ export function SettingsForm({
             options={TEXT_SIZES}
             value={textSize}
             onChange={pickSize}
-            disabled={!signedIn}
           />
-          <Choice
-            legend="Theme"
-            name="theme"
-            options={THEMES}
-            value={theme}
-            onChange={pickTheme}
-            disabled={!signedIn}
-          />
+          <Choice legend="Theme" name="theme" options={THEMES} value={theme} onChange={pickTheme} />
           <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
             {status}
           </p>
@@ -177,17 +162,15 @@ function Choice<T extends string>({
   options,
   value,
   onChange,
-  disabled,
 }: {
   legend: string;
   name: string;
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
-  disabled?: boolean;
 }) {
   return (
-    <fieldset disabled={disabled} className="space-y-2 disabled:opacity-60">
+    <fieldset className="space-y-2">
       <legend className="text-sm font-medium">{legend}</legend>
       <div className="bg-muted inline-flex rounded-lg p-1">
         {options.map((o) => (

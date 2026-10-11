@@ -5,6 +5,7 @@ import { PrivacyNotice } from "@/components/settings/privacy-notice";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireUserId } from "@/server/auth/current-user";
 import { locationState } from "@/server/user-location";
 import { displaySettings } from "@/server/user-settings";
 import { DeleteAccountCard } from "@/components/settings/delete-account";
@@ -12,6 +13,7 @@ import { DeleteAccountCard } from "@/components/settings/delete-account";
 export const metadata: Metadata = { title: "Settings & privacy" };
 
 export default async function SettingsPage() {
+  await requireUserId();
   const head = await headers();
   const jar = await cookies();
   const [display, { location, consent }] = await Promise.all([
@@ -28,7 +30,6 @@ export default async function SettingsPage() {
         </p>
       </div>
       <SettingsForm
-        signedIn={display.signedIn}
         location={location}
         consent={consent === true}
         textSize={display.textSize}
@@ -39,27 +40,19 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle>Your data</CardTitle>
           <CardDescription>
-            {display.signedIn
-              ? "Everything we store about you, your account, settings and widgets, in 1 JSON file."
-              : "Sign in to download the data we store about you."}
+            Everything we store about you, your account, settings and widgets, in 1 JSON file.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {display.signedIn ? (
-            <Button asChild variant="outline">
-              {/* a plain link, the server answers w/ a file to save */}
-              <a href="/api/account/export" download>
-                <Download /> Download my data
-              </a>
-            </Button>
-          ) : (
-            <Button variant="outline" disabled>
+          <Button asChild variant="outline">
+            {/* a plain link, the server answers w/ a file to save */}
+            <a href="/api/account/export" download>
               <Download /> Download my data
-            </Button>
-          )}
+            </a>
+          </Button>
         </CardContent>
       </Card>
-      {display.signedIn && <DeleteAccountCard />}
+      <DeleteAccountCard />
       <PrivacyNotice />
     </div>
   );
