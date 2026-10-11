@@ -1,6 +1,6 @@
-/** the cookies a visitor w/o an account gets (location, its consent, game progress). httpOnly so page js
- * never touches them, lax so they ride along on normal navigation, and secure only over https bc
- * docker serves plain http on localhost and a secure cookie would never come back there */
+/** the app's own cookies (game progress). httpOnly so page js never touches them, lax so they ride
+ * along on normal navigation, and secure only over https bc docker serves plain http on localhost
+ * and a secure cookie would never come back there */
 
 import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { Download } from "lucide-react";
 import { PrivacyNotice } from "@/components/settings/privacy-notice";
 import { SettingsForm } from "@/components/settings/settings-form";
@@ -48,11 +48,10 @@ export default async function SettingsPage({
 }) {
   const userId = await requireUserId();
   const head = await headers();
-  const jar = await cookies();
   // everything the account cards show
   const [display, { location, consent }, user, accounts, hints] = await Promise.all([
     displaySettings(head),
-    locationState(head, (name) => jar.get(name)?.value),
+    locationState(head),
     db.user.findUnique({
       where: { id: userId },
       select: { name: true, image: true, username: true, displayUsername: true, email: true },

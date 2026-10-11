@@ -2,7 +2,6 @@
  * is and w/ their own key if they saved one. every card fetches through here */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
-import { getCookie } from "hono/cookie";
 
 import { userLocation } from "@/server/user-location";
 import { currentUserId } from "@/server/auth/current-user";
@@ -65,7 +64,7 @@ export const widgetData: RouteHandler<typeof widgetDataRoute> = async (c) => {
   }
 
   const result = await runWidget(serviceId, widget, c.req.valid("json").params, {
-    location: await userLocation(c.req.raw.headers, (name) => getCookie(c, name)),
+    location: await userLocation(c.req.raw.headers),
     credentials,
     signal: c.req.raw.signal,
   });

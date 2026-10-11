@@ -1,9 +1,9 @@
 "use client";
 
-/** where the weather is for: a city search, or the device position. saved through /api/location (the
- * account when signed in, an httpOnly cookie for a visitor), the page refreshes after any change so
- * the widgets refetch. the device position is only asked after the user read what it's used for
- * and said yes (gdpr), the browser's own popup comes after that */
+/** where the weather is for: a city search, or the device position. saved through /api/location in
+ * the user's settings, the page refreshes after any change so the widgets refetch. the device
+ * position is only asked after the user read what it's used for and said yes (gdpr), the browser's
+ * own popup comes after that */
 
 import { LoaderCircle, LocateFixed, MapPin, Search } from "lucide-react";
 import Link from "next/link";

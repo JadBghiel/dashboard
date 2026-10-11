@@ -1,22 +1,13 @@
-/** where the user is, for every page and widget fetch. a signed in user's city and consent live in
- * their settings in the db, so they follow them to any device. a visitor w/o an account only has
- * cookies, nothing else to tie them to */
+/** where the user is, for every page and widget fetch. the city and the consent live in the user's
+ * settings in the db, so they follow them to any device. signed out (only the public /privacy page)
+ * it's the default city */
 
 import { currentUserId } from "@/server/auth/current-user";
 import { db } from "@/server/db";
-import {
-  CONSENT_COOKIE,
-  LOCATION_COOKIE,
-  parseConsent,
-  parseSavedLocation,
-  resolveSaved,
-  type SavedLocation,
-} from "@/server/location";
+import { DEFAULT_LOCATION, resolveSaved, type SavedLocation } from "@/server/location";
 import type { UserLocation } from "@/server/registry/define";
 
 type HeaderReader = Pick<Headers, "get" | "has">;
-// next's cookies() and hono's getCookie both fit
-type CookieReader = (name: string) => string | undefined;
 
 export type LocationState = {
   location: UserLocation;
@@ -24,22 +15,9 @@ export type LocationState = {
   consent: boolean | null;
 };
 
-export async function locationState(
-  headers: HeaderReader,
-  cookie: CookieReader,
-): Promise<LocationState> {
+export async function locationState(headers: HeaderReader): Promise<LocationState> {
   const userId = await currentUserId(headers as Headers);
-  if (!userId) {
-    const consent = parseConsent(cookie(CONSENT_COOKIE));
-    return {
-      location: resolveSaved(
-        parseSavedLocation(cookie(LOCATION_COOKIE)),
-        headers,
-        consent === true,
-      ),
-      consent,
-    };
-  }
+  if (!userId) return { location: DEFAULT_LOCATION, consent: null };
   const row = await db.userSettings.findUnique({
     where: { userId },
     select: { locationName: true, lat: true, lon: true, country: true, locationConsent: true },
@@ -52,8 +30,8 @@ export async function locationState(
   return { location: resolveSaved(saved, headers, consent === true), consent };
 }
 
-export const userLocation = async (headers: HeaderReader, cookie: CookieReader) =>
-  (await locationState(headers, cookie)).location;
+export const userLocation = async (headers: HeaderReader) =>
+  (await locationState(headers)).location;
 
 /** saves the city in the user's settings, null forgets it */
 export async function saveLocationOf(userId: string, place: SavedLocation | null) {

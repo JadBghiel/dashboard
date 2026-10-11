@@ -1,6 +1,6 @@
 /** the signed in user's own settings, in the db so they follow the account across devices. GET reads
  * them all, PATCH only changes the display ones: the city and the consent have 1 write path each,
- * /api/location and /api/location/consent, which also cover visitors */
+ * /api/location and /api/location/consent */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 

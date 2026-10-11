@@ -1,4 +1,4 @@
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { LocationPicker } from "@/components/location-picker";
@@ -9,11 +9,11 @@ import { currentUserId } from "@/server/auth/current-user";
 import { userLocation } from "@/server/user-location";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  // resolved on the server, location shown at the top
+  // resolved on the server, location shown at the top. only /privacy is open w/o an account, a
+  // visitor has no location to change there
   const head = await headers();
-  const jar = await cookies();
-  const location = await userLocation(head, (name) => jar.get(name)?.value);
   const signedIn = !!(await currentUserId(head));
+  const location = signedIn ? await userLocation(head) : null;
 
   return (
     <SidebarProvider>
@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <SidebarTrigger />
             <Separator orientation="vertical" className="mr-2 h-4" />
             <div className="ml-auto flex items-center gap-1">
-              <LocationPicker location={location} />
+              {location && <LocationPicker location={location} />}
               <ThemeToggle signedIn={signedIn} />
             </div>
           </div>

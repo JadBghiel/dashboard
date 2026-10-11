@@ -1,14 +1,10 @@
 /** where the user is, decided in 1 place: the city they picked, else what vercel guessed from their
  * ip if they said yes to it (gdpr), else madrid. server/user-location.ts reads the saved city and the
- * consent, from the db for a signed in user or from cookies for a visitor */
+ * consent from the user's settings in the db */
 
 import { z } from "zod";
 
 import type { UserLocation } from "./registry/define";
-
-export const LOCATION_COOKIE = "dash_location";
-// a visitor's answer to "guess my city from my connection?": "yes" or "no", absent = not asked
-export const CONSENT_COOKIE = "dash_location_consent";
 
 export const CountryCode = z
   .string()
@@ -34,19 +30,6 @@ export const DEFAULT_LOCATION: UserLocation = {
   country: DEFAULT_COUNTRY,
   source: "default",
 };
-
-/** the cookie is user controlled, so anything that doesnt parse is ignored, never thrown */
-export function parseSavedLocation(raw: string | undefined): SavedLocation | null {
-  if (!raw) return null;
-  // setCookie url encodes the value, some readers hand it back still encoded
-  const text = raw.startsWith("%7B") ? safeDecode(raw) : raw;
-  try {
-    const parsed = SavedLocation.safeParse(JSON.parse(text ?? ""));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
 
 /** vercel adds these to every request from its edge. theyre absent in docker and in dev, and
  * spoofing them only changes your own weather, so theyre safe to use as a guess */
@@ -91,9 +74,6 @@ export function resolveSaved(
   }
   return (consent && ipLocation(headers)) || DEFAULT_LOCATION;
 }
-
-export const parseConsent = (raw: string | undefined) =>
-  raw === "yes" ? true : raw === "no" ? false : null;
 
 function safeDecode(value: string) {
   try {
