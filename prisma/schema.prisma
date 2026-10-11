@@ -145,6 +145,8 @@ model UserSettings {
   textSize        String   @default("normal")
   // system | light | dark
   theme           String   @default("system")
+  // the default widgets were given, so removing them all leaves an empty dashboard, not 16 new ones
+  widgetsSeeded   Boolean  @default(false)
   updatedAt       DateTime @updatedAt
 
   @@map("user_settings")

@@ -43,3 +43,9 @@ next-env.d.ts
 /generated
 
 //tests/
+# rendered demo videos
+demo-videos/out/
+# your live data, replayed in the demo video
+demo-videos/fixtures/
+
+tests/

@@ -8,7 +8,6 @@ import { DEFAULT_TICKERS } from "@/server/market-watchlist";
 import { db } from "@/server/db";
 import { registry } from "@/server/registry";
 import type { WidgetDef } from "@/server/registry/define";
-import { NotSubscribedError, requireSubscription } from "@/server/subscriptions";
 
 // what a new user starts with: 1 of each widget, in the order of the dashboard sections
 // the optional 3rd item overrides the widget defaults, stocks and crypto start w/ a few instead of none
@@ -40,7 +39,7 @@ export const MAX_INSTANCES = 50;
 
 export class InstanceError extends Error {
   constructor(
-    readonly status: 400 | 403 | 404,
+    readonly status: 400 | 404,
     message: string,
   ) {
     super(message);
@@ -60,19 +59,6 @@ function widgetOf(serviceId: string, widgetId: string) {
   const widget = registry.getWidget(serviceId, widgetId);
   if (!widget) throw new InstanceError(404, "That widget doesn't exist.");
   return widget;
-}
-
-/** requireSubscription (#18): a widget of a locked service can't be added to the dashboard. one
- * already there stays, its card says how to unlock it */
-async function checkSubscribed(userId: string, serviceId: string) {
-  const service = registry.getService(serviceId);
-  if (!service) return;
-  try {
-    await requireSubscription(userId, service);
-  } catch (err) {
-    if (err instanceof NotSubscribedError) throw new InstanceError(403, err.message);
-    throw err;
-  }
 }
 
 // the same zod schema the data endpoint uses, so a saved config is always 1 the fetcher can read
@@ -99,7 +85,8 @@ function checkRefresh(widget: WidgetDef, sec: number) {
 const byPosition = (userId: string) =>
   db.widgetInstance.findMany({ where: { userId }, orderBy: { position: "asc" }, select: SELECT });
 
-/** the user's dashboard. the 1st time it's empty, so it gets the default widgets */
+/** the user's dashboard. the 1st time it gets the default widgets, only once: someone who removes
+ * every widget keeps an empty dashboard */
 export async function listInstances(userId: string) {
   const rows = await byPosition(userId);
   if (rows.length > 0) return rows;
@@ -107,7 +94,11 @@ export async function listInstances(userId: string) {
   await db.$transaction(async (tx) => {
     // locks the user row, 2 tabs opening a new account at once dont both create the defaults
     await tx.$executeRaw`SELECT 1 FROM "user" WHERE id = ${userId} FOR UPDATE`;
-    if ((await tx.widgetInstance.count({ where: { userId } })) > 0) return;
+    const settings = await tx.userSettings.findUnique({
+      where: { userId },
+      select: { widgetsSeeded: true },
+    });
+    if (settings?.widgetsSeeded) return;
     await tx.widgetInstance.createMany({
       data: DEFAULT_WIDGETS.map(([serviceId, widgetId, params], position) => {
         const widget = widgetOf(serviceId, widgetId);
@@ -121,6 +112,11 @@ export async function listInstances(userId: string) {
         };
       }),
     });
+    await tx.userSettings.upsert({
+      where: { userId },
+      create: { userId, widgetsSeeded: true },
+      update: { widgetsSeeded: true },
+    });
   });
   return byPosition(userId);
 }
@@ -128,13 +124,14 @@ export async function listInstances(userId: string) {
 // a widget's starting options beyond its own defaults (crypto starts w/ 8 coins, not none)
 const STARTING_PARAMS = new Map(DEFAULT_WIDGETS.map(([s, w, p]) => [`${s}/${w}`, p ?? {}]));
 
-/** add a widget. any number of the same widget, each w/ its own options and refresh rate */
+/** add a widget. any number of the same widget, each w/ its own options and refresh rate. a widget of
+ * a locked service (github not connected) can be added like the default ones, its card says how to
+ * unlock it and the data endpoint keeps refusing it until then */
 export async function createInstance(
   userId: string,
   input: { serviceId: string; widgetId: string; params?: unknown; refreshSec?: number },
 ) {
   const widget = widgetOf(input.serviceId, input.widgetId);
-  await checkSubscribed(userId, input.serviceId);
   if ((await db.widgetInstance.count({ where: { userId } })) >= MAX_INSTANCES) {
     throw new InstanceError(400, `You can have ${MAX_INSTANCES} widgets at most.`);
   }

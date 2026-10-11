@@ -62,7 +62,6 @@ export const createInstanceRoute = createRoute({
   responses: {
     201: json("the new widget", Instance),
     400: errorResponse("bad params or refresh rate"),
-    403: errorResponse("the service needs a subscription: your key or a linked account"),
     404: errorResponse("no such widget"),
     ...unauthorized,
   },
@@ -120,11 +119,11 @@ const NO_USER: ApiError = { code: "unauthorized", message: "Sign in to see your 
 
 function failed(c: Context, err: unknown) {
   if (!(err instanceof InstanceError)) throw err;
-  const code =
-    err.status === 404 ? "not_found" : err.status === 403 ? "not_subscribed" : "bad_request";
-  const body: ApiError = { code, message: err.message };
-  if (err.status === 404) return c.json(body, 404);
-  return err.status === 403 ? c.json(body, 403) : c.json(body, 400);
+  const body: ApiError = {
+    code: err.status === 404 ? "not_found" : "bad_request",
+    message: err.message,
+  };
+  return err.status === 404 ? c.json(body, 404) : c.json(body, 400);
 }
 
 export const listInstancesHandler: RouteHandler<typeof listInstancesRoute> = async (c) => {
