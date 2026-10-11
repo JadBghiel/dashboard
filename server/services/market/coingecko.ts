@@ -18,6 +18,13 @@ const MarketsResponse = z.array(
   }),
 );
 
+/** https only, and w/o coingecko's "?1696501400" version stamp: next's image optimizer only takes
+ * logo urls w/o a query string (next.config.ts), the cdn serves the same file w/o it */
+function imageUrl(url: string | null | undefined) {
+  if (!url?.startsWith("https://")) return null;
+  return url.split("?")[0];
+}
+
 export type Coin = {
   id: string;
   symbol: string;
@@ -47,7 +54,7 @@ export async function coinPrices(ids: string[], currency: string, signal: AbortS
           symbol: r.symbol.toUpperCase(),
           name: r.name,
           // only https, the page loads them straight from coingecko's cdn
-          image: r.image?.startsWith("https://") ? r.image : null,
+          image: imageUrl(r.image),
           price: r.current_price,
           changePct: r.price_change_percentage_24h ?? 0,
         },
@@ -85,7 +92,7 @@ export async function searchCoins(q: string, signal: AbortSignal): Promise<CoinM
     id: c.id,
     name: c.name,
     symbol: c.symbol.toUpperCase(),
-    image: c.thumb?.startsWith("https://") ? c.thumb : null,
+    image: imageUrl(c.thumb),
   }));
   searchCache.set(key, matches);
   return matches;
