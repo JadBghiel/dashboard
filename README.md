@@ -4,7 +4,7 @@ A personal dashboard that gathers live information from public services into wid
 configure and arrange. Each widget refreshes on its own schedule: the weather where you are, your
 stocks and coins, the news you follow, today's puzzles, and more.
 
-## AVAILABLE ONLINE ON VERCEL: [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
+## ACCESS THE [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
 
 https://github.com/user-attachments/assets/1afa7ca5-6ad4-4166-beed-344738a4560a
 
