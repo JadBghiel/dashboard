@@ -4,7 +4,7 @@ Lets tests grab a verification link without a real inbox
 Only works against a running mailpit instance (docker-compose.dev.yml)
 */
 
-const MAILPIT_URL = process.env.MAILPIT_URL ?? "http://localhost:8025";
+const MAILPIT_URL = process.env.MAILPIT_URL ?? "http://localhost:8026";
 
 export async function getLatestMail(to: string) {
   const res = await fetch(`${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`);
