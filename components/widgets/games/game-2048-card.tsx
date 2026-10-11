@@ -108,8 +108,9 @@ function Game({ size, target }: Config) {
     const ctrl = new AbortController();
     api.games["2048"].best
       .$get({ query: { size: String(size) } }, { init: { signal: ctrl.signal } })
-      .then((res) => res.json())
-      .then((body) => setBest(body.best))
+      .then(async (res) => {
+        if (res.ok) setBest((await res.json()).best);
+      })
       .catch(() => {
         // no best yet or offline, the game plays the same
       });

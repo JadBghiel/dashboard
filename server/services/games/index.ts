@@ -68,7 +68,7 @@ export const spellingBeeWidget = defineWidget({
 });
 
 // runs entirely in the browser, there's nothing daily or secret about a 2048 board. the fetch only
-// hands the card its config, the personal best lives in a cookie through /api/games/2048/best
+// hands the card its config, the personal best is saved w/ the user through /api/games/2048/best
 export const game2048Widget = defineWidget({
   id: "game_2048",
   name: "2048",

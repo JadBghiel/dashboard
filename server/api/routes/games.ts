@@ -1,23 +1,24 @@
 /** playing the daily games. each game's progress is an httpOnly cookie holding only what the player
- * did (the guesses), the answer is recomputed and every move scored here, never sent early */
+ * did today (the guesses), the answer is recomputed and every move scored here, never sent early.
+ * the 2048 best scores are the user's, saved w/ their settings */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
 import { readJsonCookie, writeJsonCookie } from "@/server/cookies";
-import { WidgetError } from "@/server/registry/define";
+import { db } from "@/server/db";
 import { secondsToMidnight } from "@/server/services/games/daily";
 import { dailyFlagImage, FlagProgress, flagState, playFlag } from "@/server/services/games/flags";
 import { BeeProgress, beeState, playBee } from "@/server/services/games/spelling-bee";
 import { playWordle, WordleProgress, wordleState } from "@/server/services/games/wordle";
 
 import { errorResponse } from "../errors";
+import { json, timeout, unauthorized, unavailable, upstreamFailure, userOf } from "../shared";
 
 const COOKIES = {
   wordle: "dash_game_wordle",
   flags: "dash_game_flags",
   bee: "dash_game_bee",
-  best2048: "dash_game_2048",
 };
 
 const Bool = z
@@ -28,11 +29,6 @@ const BoolOn = z
   .enum(["true", "false"])
   .default("true")
   .transform((v) => v === "true");
-
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
-  description,
-  content: { "application/json": { schema } },
-});
 
 const Status = z.enum(["playing", "won", "lost"]);
 
@@ -172,30 +168,13 @@ export const beePlayRoute = createRoute({
 
 // ---- handlers ----
 
-const timeout = (c: Context) => AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(8000)]);
-
-// a wrong guess is the player's to read, anything else (datamuse down) stays in the logs
-function fail(err: unknown) {
-  if (err instanceof WidgetError) {
-    return { status: 422 as const, body: { code: "widget_error", message: err.message } };
-  }
-  // the page went away mid request, nobody is waiting and nothing broke
-  if (!(err instanceof Error && err.name === "ResponseAborted"))
-    console.error("game request failed", err);
-  return {
-    status: 502 as const,
-    body: { code: "upstream_error", message: "The game is unavailable right now." },
-  };
-}
-
 export const wordleGet: RouteHandler<typeof wordleGetRoute> = async (c) => {
   const { length, hard } = c.req.valid("query");
   try {
     const progress = readJsonCookie(c, COOKIES.wordle, WordleProgress);
     return c.json(await wordleState(progress, length, hard, timeout(c)), 200);
   } catch (err) {
-    const f = fail(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "The game");
   }
 };
 
@@ -213,8 +192,7 @@ export const wordlePlay: RouteHandler<typeof wordlePlayRoute> = async (c) => {
     writeJsonCookie(c, COOKIES.wordle, next);
     return c.json(await wordleState(next, length, hard, signal), 200);
   } catch (err) {
-    const f = fail(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "The game");
   }
 };
 
@@ -224,8 +202,7 @@ export const flagsGet: RouteHandler<typeof flagsGetRoute> = async (c) => {
     const progress = readJsonCookie(c, COOKIES.flags, FlagProgress);
     return c.json(await flagState(progress, tries, hints, timeout(c)), 200);
   } catch (err) {
-    const f = fail(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "The game");
   }
 };
 
@@ -243,8 +220,7 @@ export const flagsPlay: RouteHandler<typeof flagsPlayRoute> = async (c) => {
     writeJsonCookie(c, COOKIES.flags, next);
     return c.json(await flagState(next, tries, hints, signal), 200);
   } catch (err) {
-    const f = fail(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "The game");
   }
 };
 
@@ -254,8 +230,7 @@ export const beeGet: RouteHandler<typeof beeGetRoute> = async (c) => {
     const progress = readJsonCookie(c, COOKIES.bee, BeeProgress);
     return c.json(await beeState(progress, min_length, timeout(c)), 200);
   } catch (err) {
-    const f = fail(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "The game");
   }
 };
 
@@ -268,8 +243,7 @@ export const beePlay: RouteHandler<typeof beePlayRoute> = async (c) => {
     writeJsonCookie(c, COOKIES.bee, next);
     return c.json(await beeState(next, min_length, signal), 200);
   } catch (err) {
-    const f = fail(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "The game");
   }
 };
 
@@ -283,14 +257,14 @@ export async function flagImage(c: Context) {
       "cache-control": `private, max-age=${secondsToMidnight()}`,
     });
   } catch (err) {
-    console.error("flag image failed", err);
-    return c.json({ code: "upstream_error", message: "The flag is unavailable right now." }, 502);
+    return unavailable(c, err, "The flag");
   }
 }
 
 // ---- 2048: a personal best per board size ----
 // the game runs in the browser, so this score cant be verified, its only ever shown back to the
-// same player. bounded so a hand edited request cant store something silly
+// same player. bounded so a hand edited request cant store something silly. in the db, so it
+// follows the account to every device
 
 const MAX_2048_SCORE = 10_000_000;
 const Score = z.number().int().min(0).max(MAX_2048_SCORE);
@@ -305,7 +279,7 @@ export const best2048GetRoute = createRoute({
   tags: ["games"],
   summary: "your best 2048 score for a board size",
   request: { query: z.object({ size: BoardSize.default(4) }) },
-  responses: { 200: json("the best score, 0 if none yet", BestOut) },
+  responses: { 200: json("the best score, 0 if none yet", BestOut), ...unauthorized },
 });
 
 export const best2048PutRoute = createRoute({
@@ -325,22 +299,34 @@ export const best2048PutRoute = createRoute({
       },
     },
   },
-  responses: { 200: json("the best score after this one", BestOut) },
+  responses: { 200: json("the best score after this one", BestOut), ...unauthorized },
 });
 
-const readBest = (c: Context): Best2048 => readJsonCookie(c, COOKIES.best2048, Best2048) ?? {};
+// a bad value in the column (edited by hand) counts as no score yet
+async function readBest(userId: string): Promise<Best2048> {
+  const row = await db.userSettings.findUnique({ where: { userId }, select: { best2048: true } });
+  return Best2048.catch({}).parse(row?.best2048 ?? {});
+}
 
-export const best2048Get: RouteHandler<typeof best2048GetRoute> = (c) => {
+export const best2048Get: RouteHandler<typeof best2048GetRoute> = async (c) => {
   const { size } = c.req.valid("query");
-  const key = String(size) as keyof Best2048;
-  return c.json({ size, best: readBest(c)[key] ?? 0 }, 200);
+  const all = await readBest(await userOf(c));
+  return c.json({ size, best: all[String(size) as keyof Best2048] ?? 0 }, 200);
 };
 
-export const best2048Put: RouteHandler<typeof best2048PutRoute> = (c) => {
+export const best2048Put: RouteHandler<typeof best2048PutRoute> = async (c) => {
   const { size, score } = c.req.valid("json");
+  const userId = await userOf(c);
   const key = String(size) as keyof Best2048;
-  const all = readBest(c);
+  const all = await readBest(userId);
   const best = Math.max(all[key] ?? 0, score);
-  if (best !== all[key]) writeJsonCookie(c, COOKIES.best2048, { ...all, [key]: best });
+  if (best !== all[key]) {
+    const best2048 = { ...all, [key]: best };
+    await db.userSettings.upsert({
+      where: { userId },
+      create: { userId, best2048 },
+      update: { best2048 },
+    });
+  }
   return c.json({ size, best }, 200);
 };

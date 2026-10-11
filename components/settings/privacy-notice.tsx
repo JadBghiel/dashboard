@@ -13,7 +13,6 @@ const COOKIES = [
     "Your progress in today's puzzles",
     "1 year",
   ],
-  ["dash_game_2048", "Your best 2048 score", "1 year"],
   // better-auth's defaults: 7 days, pushed back at most once a day while the app is used
   [
     "Session cookie",
@@ -111,7 +110,7 @@ export function PrivacyNotice() {
           </li>
           <li>
             <span className="text-foreground font-medium">Your settings</span>: your city, your
-            location answer, the text size and the theme.
+            location answer, the text size, the theme and your best 2048 scores.
           </li>
           <li>
             <span className="text-foreground font-medium">Your widgets</span>: which ones you use,
@@ -132,7 +131,9 @@ export function PrivacyNotice() {
           Our emails (confirming your address, changing it, resetting your password, deleting your
           account) are sent by SendGrid, which receives your email address to deliver them.
         </p>
-        <p>Your game progress stays in cookies in your browser, never on our side.</p>
+        <p>
+          Your progress in today&apos;s puzzles stays in cookies in your browser, never on our side.
+        </p>
       </Section>
 
       <Section title="Your location">
