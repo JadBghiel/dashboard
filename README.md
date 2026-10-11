@@ -6,7 +6,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 
 ## AVAILABLE ONLINE ON VERCEL: [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
 
-![The dashboard in dark mode: weather, stocks, crypto, GitHub and the other widgets](assets/screenshots/dashboard.png)
+https://github.com/user-attachments/assets/b5f3d3e0-07b9-45f7-9c64-f17d69c46fd3
 
 ## What it is for
 
@@ -19,7 +19,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 
 ## Key features
 
-- **16 widgets from 6 services**, each with its own options, set from the gear on the card.
+- **16 widgets from 7 services**, each with its own options, set from the gear on the card.
 - **Your GitHub, through OAuth2:** connect your GitHub account on the Services page to see your
   unread notifications and your public repositories. Read only; the token is stored encrypted and
   disconnecting deletes it.
@@ -46,8 +46,10 @@ stocks and coins, the news you follow, today's puzzles, and more.
 | ------------ | ------------------------ | -------------------- | ------------------------------------------------------------------ |
 | Weather      | No                       | `current_weather`    | `city` (empty = your location), `units`, `show_wind`, `days` (0–7) |
 | Stock market | App key, or your own key | `stock_watchlist`    | `tickers` (up to 10 US stocks), `change` (percent or amount)       |
-|              |                          | `crypto_prices`      | `coins` (up to 15 CoinGecko ids), `currency` (usd, eur, gbp)       |
+| Currencies   | No                       | `crypto_prices`      | `coins` (up to 15 CoinGecko ids), `currency` (usd, eur, gbp)       |
 |              |                          | `currency_converter` | `from`, `to` (comma list), `amount`                                |
+| GitHub       | Your GitHub account      | `repositories`       | `count`, `sort` (pushed, created, full_name)                       |
+|              | (OAuth2)                 | `notifications`      | `count`, `only_participating`                                      |
 | Tools        | No                       | `public_holidays`    | `country` (empty = yours), `count`                                 |
 |              |                          | `translator`         | `from`, `to` (12 languages)                                        |
 |              |                          | `on_this_day`        | `type` (events, births, deaths), `count`, `language`               |
@@ -62,7 +64,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 The full, always up to date list (services, widgets, parameters and their types) is served at
 `/about.json`, generated from the same definitions the server validates with.
 
-**Where the data comes from:** Open-Meteo (weather), Finnhub (stocks), CoinGecko (crypto),
+**Where the data comes from:** Open-Meteo (weather), Finnhub (stocks), CoinGecko (crypto), GitHub,
 Frankfurter / European Central Bank (currencies), Nager.Date (holidays), MyMemory (translation),
 Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world events), YouTube
 (live TV), Datamuse, flagcdn and CountriesNow (games). Our server calls them; your browser never does.
@@ -210,6 +212,7 @@ outside service faked by Mock Service Worker, so the tests never touch your data
 | `npm run typecheck`  | Generate route types, then `tsc`                           |
 | `npm run format`     | Format with Prettier                                       |
 | `npm run check`      | Lint, typecheck and format check                           |
+| `npm run videos`     | Film the demo video, frame by frame (needs `npm run dev`)  |
 
 ## Technology and specifications
 
