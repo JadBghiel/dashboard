@@ -15,11 +15,11 @@ import { NotSubscribedError, requireSubscription } from "@/server/subscriptions"
 export const DEFAULT_WIDGETS: [service: string, widget: string, params?: object][] = [
   ["weather", "current_weather"],
   ["market", "stock_watchlist", { tickers: DEFAULT_TICKERS.join(",") }],
-  ["market", "crypto_prices", { coins: DEFAULT_COINS.join(",") }],
+  ["currencies", "crypto_prices", { coins: DEFAULT_COINS.join(",") }],
   // locked until the user connects github, both cards say how
   ["github", "repositories"],
   ["github", "notifications"],
-  ["market", "currency_converter"],
+  ["currencies", "currency_converter"],
   ["tools", "public_holidays"],
   ["tools", "translator"],
   ["tools", "on_this_day"],

@@ -37,7 +37,7 @@ export function CryptoCard({ coins = "", currency = "usd", onChange }: Props) {
 
   // sorted in the params: a heart refetches, a drag only reorders what's already on screen
   const { data, error, loading, refresh } = useWidgetData<CryptoPayload>(
-    "market",
+    "currencies",
     "crypto_prices",
     { coins: [...saved].sort().join(","), currency },
     "",

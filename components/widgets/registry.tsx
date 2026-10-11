@@ -85,7 +85,7 @@ export const CARDS: Record<string, CardDef> = {
       />
     ),
   },
-  "market/crypto_prices": {
+  "currencies/crypto_prices": {
     section: "utility",
     notInSettings: ["coins"],
     render: (p, { onChange }) => (
@@ -96,7 +96,7 @@ export const CARDS: Record<string, CardDef> = {
       />
     ),
   },
-  "market/currency_converter": {
+  "currencies/currency_converter": {
     section: "utility",
     notInSettings: ["from", "to", "amount"],
     render: (p, { onChange }) => (
