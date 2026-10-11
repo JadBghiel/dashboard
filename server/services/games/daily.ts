@@ -1,7 +1,7 @@
 /** what makes a game "daily": the same puzzle for everyone, picked from the utc date. no database,
  * a hash of the date and the game name picks the index */
 
-export const today = () => new Date().toISOString().slice(0, 10);
+import { today } from "@/lib/day";
 
 // the puzzle number shown to players, day 1 being the 1st of january 2026
 export const puzzleNumber = (day = today()) =>

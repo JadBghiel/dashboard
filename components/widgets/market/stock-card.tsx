@@ -1,14 +1,14 @@
 "use client";
 
 /** market widget: watchlist tab w/ live prices, a search tab to find tickers, and an extended
- * view of 1 ticker. hearting saves to an httpOnly cookie through /api/market/watchlist. the search
- * tab is in stock-search.tsx and the extended view in stock-detail.tsx */
+ * view of 1 ticker. hearting saves the tickers param of the user's widget. the search tab is in
+ * stock-search.tsx and the extended view in stock-detail.tsx */
 
 import { ArrowRight, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WATCHLIST_MAX } from "@/server/market-watchlist";
+import { WATCHLIST_MAX } from "@/lib/market-watchlist";
 import type { WatchlistPayload } from "@/server/services/market/widgets/watchlist";
 
 import { useWidgetData } from "../use-widget-data";

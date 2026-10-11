@@ -13,9 +13,10 @@ import { ConnectionsCard, type SavedKey } from "@/components/settings/connection
 import { ProfileCard } from "@/components/settings/profile-card";
 import { SecurityCard } from "@/components/settings/security-card";
 import { googleEnabled } from "@/lib/auth";
-import { listHints } from "@/server/credential-store";
+import { linkErrorMessage } from "@/lib/link-errors";
 import { db } from "@/server/db";
 import { registry } from "@/server/registry";
+import { setupOf } from "@/server/subscriptions";
 
 export const metadata: Metadata = { title: "Settings & privacy" };
 
@@ -44,34 +45,33 @@ function emailStatus(params: { email?: string; error?: string }) {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string; error?: string }>;
+  searchParams: Promise<{ email?: string; error?: string; link_error?: string }>;
 }) {
+  const params = await searchParams;
+  // a refused google link comes back w/ ?link_error=google&error=..., the other ?error= are the
+  // email change's
+  const linkError = params.link_error ? linkErrorMessage("Google", params.error) : null;
   const userId = await requireUserId();
   const head = await headers();
   // everything the account cards show
-  const [display, { location, consent }, user, accounts, hints] = await Promise.all([
+  const [display, { location, consent }, user, { keyHints, accounts }] = await Promise.all([
     displaySettings(head),
     locationState(head),
     db.user.findUnique({
       where: { id: userId },
       select: { name: true, image: true, username: true, displayUsername: true, email: true },
     }),
-    db.account.findMany({
-      where: { userId },
-      select: { id: true, providerId: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    listHints(userId),
+    setupOf(userId),
   ]);
   // a google only account has no "credential" row, so no password to change
   const hasPassword = accounts.some((a) => a.providerId === "credential");
-  const keys: SavedKey[] = hints.map((h) => {
-    const service = registry.getService(h.serviceId);
+  const keys: SavedKey[] = [...keyHints].map(([serviceId, hint]) => {
+    const service = registry.getService(serviceId);
     return {
-      serviceId: h.serviceId,
-      serviceName: service?.name ?? h.serviceId,
+      serviceId,
+      serviceName: service?.name ?? serviceId,
       label: service?.key?.label ?? "API key",
-      hint: h.hint,
+      hint,
     };
   });
 
@@ -112,10 +112,17 @@ export default async function SettingsPage({
           image={user.image}
           username={user.displayUsername ?? user.username}
           email={user.email}
-          emailStatus={emailStatus(await searchParams)}
+          emailStatus={params.link_error ? null : emailStatus(params)}
         />
       )}
-      {user && <ConnectionsCard keys={keys} accounts={accounts} googleEnabled={googleEnabled} />}
+      {user && (
+        <ConnectionsCard
+          keys={keys}
+          accounts={accounts}
+          googleEnabled={googleEnabled}
+          linkError={linkError}
+        />
+      )}
       <SecurityCard hasPassword={hasPassword} />
       <DeleteAccountCard />
       <PrivacyNotice />

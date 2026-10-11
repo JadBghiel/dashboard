@@ -5,8 +5,10 @@ import { z } from "zod";
 
 import { WidgetError } from "@/server/registry/define";
 
-import { fetchOnceMore, getJson, ttlCache } from "../http";
-import { pickDaily, puzzleNumber, today } from "./daily";
+import { fetchOnceMore, getJson, ttlCache, UpstreamError } from "../http";
+import { today } from "@/lib/day";
+
+import { pickDaily, puzzleNumber } from "./daily";
 
 export type Country = { code: string; name: string; lat: number; lon: number };
 
@@ -87,8 +89,7 @@ export async function countries(signal: AbortSignal): Promise<Country[]> {
   return list;
 }
 
-export const dailyCountry = async (signal: AbortSignal) =>
-  pickDaily(await countries(signal), "flag");
+const dailyCountry = async (signal: AbortSignal) => pickDaily(await countries(signal), "flag");
 
 const toRad = (d: number) => (d * Math.PI) / 180;
 
@@ -179,6 +180,6 @@ export function playFlag(state: FlagState, raw: string): FlagProgress {
 export async function dailyFlagImage(signal: AbortSignal) {
   const { code } = await dailyCountry(signal);
   const res = await fetchOnceMore(new URL(`https://flagcdn.com/w320/${code}.png`), { signal });
-  if (!res.ok) throw new Error(`flagcdn answered ${res.status}`);
+  if (!res.ok) throw new UpstreamError("flagcdn", res.status);
   return res.arrayBuffer();
 }

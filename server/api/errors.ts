@@ -14,7 +14,7 @@ export const errorResponse = (description: string) => ({
 });
 
 const CODES: Record<number, string> = {
-  400: "bad_request",
+  400: "invalid_request",
   401: "unauthorized",
   403: "forbidden",
   404: "not_found",
@@ -23,8 +23,7 @@ const CODES: Record<number, string> = {
   429: "too_many_requests",
 };
 
-export const errorCode = (status: number) =>
-  CODES[status] ?? (status >= 500 ? "internal_error" : "error");
+const errorCode = (status: number) => CODES[status] ?? (status >= 500 ? "internal_error" : "error");
 
 export function onError(err: Error, c: Context) {
   if (err instanceof HTTPException) {

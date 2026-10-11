@@ -4,6 +4,8 @@
 
 import { z } from "zod";
 
+import type { SectionId } from "@/lib/sections";
+
 /** how a service gets its data. none = open api (weather), the others need the user to link or
  * paste something first */
 export type ServiceAuth = "none" | "oauth" | "api_key";
@@ -12,8 +14,8 @@ export type ServiceAuth = "none" | "oauth" | "api_key";
 export type WidgetCredentials =
   { kind: "oauth"; accessToken: string } | { kind: "api_key"; apiKey: string } | null;
 
-/** where the user is. saved = they picked it (cookie), ip = guessed from the request by vercel,
- * default = nothing known, the fallback city */
+/** where the user is. saved = they picked it (their settings), ip = guessed from the request by
+ * vercel, default = nothing known, the fallback city */
 export type UserLocation = {
   name: string;
   lat: number;
@@ -60,7 +62,7 @@ export type WidgetDef<P extends ParamsSchema = ParamsSchema, R extends z.ZodType
 };
 
 /** the 3 sections of the dashboard and of the services page */
-export type ServiceCategory = "utility" | "news" | "games";
+export type ServiceCategory = SectionId;
 
 export type ServiceDef = {
   id: string;

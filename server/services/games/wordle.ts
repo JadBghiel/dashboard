@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import { WidgetError } from "@/server/registry/define";
 
-import { pickDaily, puzzleNumber, today } from "./daily";
+import { today } from "@/lib/day";
+
+import { pickDaily, puzzleNumber } from "./daily";
 import { wordFrequency, wordsOfLength } from "./words";
 
 export const MAX_GUESSES = 6;

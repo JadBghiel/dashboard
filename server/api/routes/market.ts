@@ -4,20 +4,15 @@
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
+import { TickerSymbol } from "@/lib/market-watchlist";
 import { currentUserId } from "@/server/auth/current-user";
-import { TickerSymbol } from "@/server/market-watchlist";
 import { registry } from "@/server/registry";
-import { WidgetError } from "@/server/registry/define";
 import { googleFinanceUrl, profile, quote, searchSymbols } from "@/server/services/market/finnhub";
 import { searchCoins } from "@/server/services/market/coingecko";
 import { NotSubscribedError, requireSubscription } from "@/server/subscriptions";
 
 import { errorResponse } from "../errors";
-
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
-  description,
-  content: { "application/json": { schema } },
-});
+import { json, timeout, unavailable, upstreamFailure } from "../shared";
 
 // ---- routes ----
 
@@ -74,19 +69,6 @@ export const quoteRoute = createRoute({
 
 // ---- handlers ----
 
-const timeout = (c: Context) => AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(8000)]);
-// a WidgetError is the user's to read (unknown ticker, no key), anything else stays in the logs
-function failure(err: unknown) {
-  if (err instanceof WidgetError) {
-    return { status: 422 as const, body: { code: "widget_error", message: err.message } };
-  }
-  console.error("market request failed", err);
-  return {
-    status: 502 as const,
-    body: { code: "upstream_error", message: "Market data is unavailable right now." },
-  };
-}
-
 /** the user's own finnhub key when they saved one, null = the app key. throws NotSubscribedError when
  * neither exists, the routes answer it w/ the same 403 as the widget (#18) */
 async function marketKey(c: Context) {
@@ -106,8 +88,7 @@ export const search: RouteHandler<typeof searchRoute> = async (c) => {
     return c.json({ results: await searchSymbols(c.req.valid("query").q, timeout(c), key) }, 200);
   } catch (err) {
     if (err instanceof NotSubscribedError) return c.json(notSubscribed(err), 403);
-    const f = failure(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "Market data");
   }
 };
 
@@ -138,8 +119,7 @@ export const quoteDetail: RouteHandler<typeof quoteRoute> = async (c) => {
     );
   } catch (err) {
     if (err instanceof NotSubscribedError) return c.json(notSubscribed(err), 403);
-    const f = failure(err);
-    return f.status === 422 ? c.json(f.body, 422) : c.json(f.body, 502);
+    return upstreamFailure(c, err, "Market data");
   }
 };
 
@@ -174,10 +154,6 @@ export const cryptoSearch: RouteHandler<typeof cryptoSearchRoute> = async (c) =>
   try {
     return c.json({ results: await searchCoins(c.req.valid("query").q, timeout(c)) }, 200);
   } catch (err) {
-    console.error("coin search failed", err);
-    return c.json(
-      { code: "upstream_error", message: "Coin search is unavailable right now." },
-      502,
-    );
+    return unavailable(c, err, "Coin search");
   }
 };

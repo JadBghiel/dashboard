@@ -11,7 +11,8 @@ import {
   type InstanceView,
   type WidgetSpec,
 } from "@/components/widgets/instance-context";
-import { CARDS, SECTIONS } from "@/components/widgets/registry";
+import { CARDS, SECTION_GRID } from "@/components/widgets/registry";
+import { SECTIONS } from "@/lib/sections";
 
 import { AddWidgetsDialog } from "./add-widgets-dialog";
 import { SortableSection } from "./layout-editor";
@@ -105,7 +106,7 @@ export function Dashboard({
               </p>
             ) : (
               <SortableSection
-                grid={section.grid}
+                grid={SECTION_GRID[section.id]}
                 editing={editing}
                 onReorder={(ids) => reorderSection(section.id, ids)}
                 onRemove={remove}
@@ -122,6 +123,7 @@ export function Dashboard({
                           instance,
                           spec,
                           notInSettings: card.notInSettings ?? [],
+                          daily: !!card.daily,
                           ExtraSettings: card.ExtraSettings,
                           save: (patch) => update(instance.id, patch),
                         }}

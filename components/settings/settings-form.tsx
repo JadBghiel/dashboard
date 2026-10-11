@@ -14,20 +14,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { TEXT_SIZES, THEMES, type TextSize, type Theme } from "@/lib/display";
 import type { UserLocation } from "@/server/registry/define";
-import type { TextSize, Theme } from "@/server/user-settings";
 
-const TEXT_SIZES: { value: TextSize; label: string }[] = [
-  { value: "small", label: "Small" },
-  { value: "normal", label: "Normal" },
-  { value: "large", label: "Large" },
-];
-
-const THEMES: { value: Theme; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-];
+// "small" -> { value: "small", label: "Small" }
+const choices = <T extends string>(values: readonly T[]) =>
+  values.map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) }));
+const SIZE_CHOICES = choices(TEXT_SIZES);
+const THEME_CHOICES = choices(THEMES);
 
 export function SettingsForm({
   location,
@@ -138,11 +132,17 @@ export function SettingsForm({
           <Choice
             legend="Text size"
             name="text-size"
-            options={TEXT_SIZES}
+            options={SIZE_CHOICES}
             value={textSize}
             onChange={pickSize}
           />
-          <Choice legend="Theme" name="theme" options={THEMES} value={theme} onChange={pickTheme} />
+          <Choice
+            legend="Theme"
+            name="theme"
+            options={THEME_CHOICES}
+            value={theme}
+            onChange={pickTheme}
+          />
           <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
             {status}
           </p>

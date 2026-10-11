@@ -1,8 +1,7 @@
 "use client";
 
 /** #47 key and account management: the api keys the user saved (#17, hints only) and the ways they
- * log in. removing a key is the same as on the services page, unlinking an oauth account is
- * better-auth's, which refuses to unlink the last way in */
+ * log in. the same actions as the services page (lib/account-actions.ts), all in 1 place here */
 
 import { KeyRound, Link2, Lock } from "lucide-react";
 import Link from "next/link";
@@ -12,8 +11,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
-import { authClient } from "@/lib/auth-client";
+import { linkAccount, removeKey, unlinkAccount } from "@/lib/account-actions";
 
 export type SavedKey = { serviceId: string; serviceName: string; label: string; hint: string };
 
@@ -35,16 +33,19 @@ export function ConnectionsCard({
   keys,
   accounts,
   googleEnabled,
+  linkError,
 }: {
   keys: SavedKey[];
   accounts: LoginAccount[];
   googleEnabled: boolean;
+  // why the last google link was refused, from the page's ?link_error=
+  linkError: string | null;
 }) {
   const router = useRouter();
   const logins = accounts.filter((a) => LOGIN_PROVIDERS.has(a.providerId));
   const linked = accounts.filter((a) => !LOGIN_PROVIDERS.has(a.providerId));
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(linkError);
 
   async function act(id: string, action: () => Promise<string | null>) {
     setBusy(id);
@@ -55,30 +56,14 @@ export function ConnectionsCard({
     else router.refresh();
   }
 
-  const removeKey = (serviceId: string) =>
-    act(`key-${serviceId}`, async () => {
-      const res = await api.credentials[":serviceId"]
-        .$delete({ param: { serviceId } })
-        .catch(() => null);
-      return res?.ok ? null : "Could not remove the key, try again.";
-    });
-
+  const remove = (serviceId: string) => act(`key-${serviceId}`, () => removeKey(serviceId));
   const unlink = (account: LoginAccount) =>
-    act(`account-${account.providerId}`, async () => {
-      // only looked up among the signed in user's own accounts
-      const { error } = await authClient.unlinkAccount({ accountId: account.id });
-      return error ? (error.message ?? "Something went wrong.") : null;
-    });
-
-  // leaves for google's consent screen and comes back here once linked
+    act(`account-${account.providerId}`, () => unlinkAccount(account.id));
+  // leaves for google's consent screen, back here once linked, or w/ ?link_error= when refused
   const connectGoogle = () =>
-    act("account-google", async () => {
-      const { error } = await authClient.linkSocial({
-        provider: "google",
-        callbackURL: "/settings",
-      });
-      return error ? (error.message ?? "Something went wrong.") : null;
-    });
+    act("account-google", () =>
+      linkAccount("google", "/settings", "/settings?link_error=google#connections"),
+    );
 
   return (
     <Card id="connections" className="shadow-soft">
@@ -117,7 +102,7 @@ export function ConnectionsCard({
                     variant="ghost"
                     size="sm"
                     disabled={busy === `key-${k.serviceId}`}
-                    onClick={() => removeKey(k.serviceId)}
+                    onClick={() => remove(k.serviceId)}
                     aria-label={`Remove your ${k.serviceName} key`}
                   >
                     Remove

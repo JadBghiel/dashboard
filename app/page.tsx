@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// no landing page yet, the dash is the app. gets an auth check in #7
+// no landing page, the dash is the app. a visitor goes on from there to the log in page
 export default function Home() {
   redirect("/dashboard");
 }

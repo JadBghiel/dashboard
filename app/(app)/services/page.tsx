@@ -6,20 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ConnectAccount } from "@/components/services/connect-account";
 import { OwnKeyForm } from "@/components/services/own-key-form";
 import { githubEnabled } from "@/lib/auth";
+import { linkErrorMessage } from "@/lib/link-errors";
+import { SECTIONS } from "@/lib/sections";
 import { requireUserId } from "@/server/auth/current-user";
-import { listHints } from "@/server/credential-store";
-import { linkedAccounts } from "@/server/linked-accounts";
 import { registry } from "@/server/registry";
-import type { ServiceCategory } from "@/server/registry/define";
-import { serviceStatus, type ServiceStatus } from "@/server/subscriptions";
+import { serviceStatus, setupOf, type ServiceStatus } from "@/server/subscriptions";
 
 export const metadata: Metadata = { title: "Services" };
-
-const SECTIONS: { id: ServiceCategory; title: string }[] = [
-  { id: "utility", title: "Utility" },
-  { id: "news", title: "News" },
-  { id: "games", title: "Games" },
-];
 
 function StatusBadge({ value, auth }: { value: ServiceStatus; auth: string }) {
   if (value === "needs_account") {
@@ -62,14 +55,6 @@ function StatusBadge({ value, auth }: { value: ServiceStatus; auth: string }) {
   );
 }
 
-// better-auth's codes when a link is refused, it sends the browser back here w/ ?error=
-const LINK_ERRORS: Record<string, string> = {
-  access_denied: "GitHub connection was cancelled.",
-  unable_to_link_account: "GitHub didn't confirm your email. Verify it on GitHub, then try again.",
-  account_already_linked_to_different_user:
-    "This GitHub account is already connected to another user.",
-};
-
 export default async function ServicesPage({
   searchParams,
 }: {
@@ -78,9 +63,8 @@ export default async function ServicesPage({
   const { link_error, error } = await searchParams;
   const catalog = registry.catalog;
   const userId = await requireUserId();
-  // the user's saved keys, as their last 4 characters
-  const hints = new Map((await listHints(userId)).map((k) => [k.serviceId, k.hint]));
-  const linked = await linkedAccounts(userId);
+  // the user's saved keys as their last 4 characters, and their linked accounts
+  const { keyHints, linked, statusOf } = await setupOf(userId);
   const widgets = catalog.reduce((n, s) => n + s.widgets.length, 0);
 
   return (
@@ -93,7 +77,7 @@ export default async function ServicesPage({
         </p>
         {link_error && (
           <p role="alert" className="text-destructive text-sm">
-            {(error && LINK_ERRORS[error]) ?? "GitHub couldn't be connected, try again."}
+            {linkErrorMessage("GitHub", error)}
           </p>
         )}
       </div>
@@ -122,13 +106,7 @@ export default async function ServicesPage({
                     <CardDescription>{s.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <StatusBadge
-                      value={serviceStatus(
-                        registry.getService(s.id)!,
-                        hints.has(s.id) || linked.has(s.id),
-                      )}
-                      auth={s.auth}
-                    />
+                    <StatusBadge value={statusOf(registry.getService(s.id)!)} auth={s.auth} />
                     <ul className="space-y-1 text-sm">
                       {s.widgets.map((w) => (
                         <li key={w.id}>
@@ -142,7 +120,7 @@ export default async function ServicesPage({
                         serviceId={s.id}
                         label={s.key.label}
                         helpUrl={s.key.helpUrl}
-                        hint={hints.get(s.id) ?? null}
+                        hint={keyHints.get(s.id) ?? null}
                         // without a server key, removing yours locks the service again
                         appKey={serviceStatus(registry.getService(s.id)!, false) === "ready"}
                       />

@@ -40,6 +40,8 @@ type Instance = {
   // window leaves them out so nothing shows twice
   notInSettings: readonly string[];
   ExtraSettings?: ExtraSettings;
+  // a daily puzzle, the settings window shows no refresh rate
+  daily: boolean;
   // resolves to an error message, or null once saved
   save: (patch: InstancePatch) => Promise<string | null>;
 };

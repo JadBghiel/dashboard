@@ -4,7 +4,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { z } from "zod";
 
-import type { NewsLanguage, NewsTopic } from "@/server/news-prefs";
+import type { NewsLanguage, NewsTopic } from "@/lib/news-prefs";
 
 import { getText, ttlCache } from "../http";
 

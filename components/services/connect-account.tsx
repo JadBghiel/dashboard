@@ -9,7 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
+import { linkAccount, unlinkAccount } from "@/lib/account-actions";
 
 export function ConnectAccount({
   provider,
@@ -32,25 +32,21 @@ export function ConnectAccount({
   async function connect() {
     setBusy(true);
     setError(null);
-    const { error } = await authClient.linkSocial({
-      provider,
-      callbackURL: pathname,
-      errorCallbackURL: `/services?link_error=${provider}`,
-    });
+    const failure = await linkAccount(provider, pathname, `/services?link_error=${provider}`);
     // on success the browser is already leaving for the provider
-    if (error) {
+    if (failure) {
       setBusy(false);
-      setError(error.message ?? `Could not reach ${name}, try again.`);
+      setError(failure);
     }
   }
 
   async function disconnect() {
+    if (!accountId) return;
     setBusy(true);
     setError(null);
-    if (!accountId) return;
-    const { error } = await authClient.unlinkAccount({ accountId });
+    const failure = await unlinkAccount(accountId);
     setBusy(false);
-    if (error) setError(error.message ?? "Could not disconnect, try again.");
+    if (failure) setError(failure);
     else router.refresh();
   }
 

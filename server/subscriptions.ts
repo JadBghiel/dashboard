@@ -7,13 +7,20 @@
  *   user saves a key on the services page
  * - oauth: locked until the user links that account, then the widgets run on its token */
 
-import { keyFor } from "@/server/credential-store";
-import { oauthToken } from "@/server/linked-accounts";
+import { keyFor, listHints } from "@/server/credential-store";
+import { linkedAccounts, oauthToken } from "@/server/linked-accounts";
 import type { ServiceDef, WidgetCredentials } from "@/server/registry/define";
 
 /** ready = works w/o anything from the user, own_key = runs on the user's key, linked = runs on the
  * user's linked account, the 2 others = locked */
-export type ServiceStatus = "ready" | "own_key" | "linked" | "missing_key" | "needs_account";
+export const SERVICE_STATUSES = [
+  "ready",
+  "own_key",
+  "linked",
+  "missing_key",
+  "needs_account",
+] as const;
+export type ServiceStatus = (typeof SERVICE_STATUSES)[number];
 
 export const isUnlocked = (status: ServiceStatus) =>
   status === "ready" || status === "own_key" || status === "linked";
@@ -28,6 +35,23 @@ export function serviceStatus(service: ServiceDef, subscribed: boolean): Service
   if (service.auth === "oauth") return subscribed ? "linked" : "needs_account";
   if (subscribed) return "own_key";
   return hasAppKey(service) ? "ready" : "missing_key";
+}
+
+/** what the user set up, for the services page, the settings page and GET /api/services: their keys
+ * as hints, their account rows, and the status each service gets from them */
+export async function setupOf(userId: string | null) {
+  const [hints, accounts] = userId
+    ? await Promise.all([listHints(userId), linkedAccounts(userId)])
+    : [[], []];
+  const keyHints = new Map(hints.map((k) => [k.serviceId, k.hint]));
+  const linked = new Map(accounts.map((a) => [a.providerId, a.id]));
+  return {
+    keyHints,
+    accounts,
+    linked,
+    statusOf: (service: ServiceDef) =>
+      serviceStatus(service, keyHints.has(service.id) || linked.has(service.id)),
+  };
 }
 
 /** a locked service, its message says what to do to unlock it */

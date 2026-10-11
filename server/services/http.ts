@@ -2,6 +2,11 @@
  * a failure here throws a plain Error whose text stays in the server logs, runWidget turns it into a
  * generic "unavailable" for the user, never the upstream body */
 
+import { WidgetError } from "@/server/registry/define";
+
+// every upstream call gives up after this, a stuck service never holds a request or a card
+export const UPSTREAM_TIMEOUT_MS = 8000;
+
 // wikimedia and some others ask for a descriptive user agent, it costs nothing to send it everywhere
 const USER_AGENT = "EpitechDashboard/1.0 (https://github.com/JadBghiel/dashboard)";
 
@@ -64,7 +69,8 @@ export function ttlCache<T>(ttlMs: number, max = 500) {
 }
 
 /** runs `load` through a ttl cache, and when it fails serves the last value it ever got, flagged
- * stale. the free keyless apis rate limit hard, a slightly old price beats an error */
+ * stale. the free apis rate limit hard, a slightly old price beats an error. a WidgetError (an
+ * unknown ticker, a refused key) is the user's to fix, an old value wouldnt help, it goes through */
 export function cachedWithFallback<T>(ttlMs: number) {
   const fresh = ttlCache<T>(ttlMs);
   const lastGood = ttlCache<T>(Number.POSITIVE_INFINITY);
@@ -78,7 +84,7 @@ export function cachedWithFallback<T>(ttlMs: number) {
       return { value, stale: false };
     } catch (err) {
       const last = lastGood.get(key);
-      if (last !== undefined && err instanceof UpstreamError) return { value: last, stale: true };
+      if (last !== undefined && !(err instanceof WidgetError)) return { value: last, stale: true };
       throw err;
     }
   };

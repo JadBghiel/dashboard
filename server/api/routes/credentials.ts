@@ -3,20 +3,14 @@
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 
-import { currentUserId } from "@/server/auth/current-user";
 import { deleteKey, listHints, saveKey } from "@/server/credential-store";
 import { registry } from "@/server/registry";
 
-import { errorResponse, type ApiError } from "../errors";
+import { errorResponse } from "../errors";
+import { json, unauthorized, userOf } from "../shared";
 
 const Hint = z.object({ serviceId: z.string(), hint: z.string() });
 const Service = z.object({ serviceId: z.string().max(40) });
-const unauthorized = { 401: errorResponse("not signed in") };
-
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
-  description,
-  content: { "application/json": { schema } },
-});
 
 export const listKeysRoute = createRoute({
   method: "get",
@@ -57,17 +51,13 @@ export const deleteKeyRoute = createRoute({
   responses: { 204: { description: "removed" }, ...unauthorized },
 });
 
-const noUser: ApiError = { code: "unauthorized", message: "Sign in to save your own keys." };
-
 export const listKeys: RouteHandler<typeof listKeysRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(noUser, 401);
+  const userId = await userOf(c);
   return c.json({ keys: await listHints(userId) }, 200);
 };
 
 export const putKey: RouteHandler<typeof saveKeyRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(noUser, 401);
+  const userId = await userOf(c);
   const { serviceId } = c.req.valid("param");
   const service = registry.getService(serviceId);
   if (service?.auth !== "api_key") {
@@ -83,8 +73,7 @@ export const putKey: RouteHandler<typeof saveKeyRoute> = async (c) => {
 };
 
 export const removeKey: RouteHandler<typeof deleteKeyRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(noUser, 401);
+  const userId = await userOf(c);
   await deleteKey(userId, c.req.valid("param").serviceId);
   return c.body(null, 204);
 };

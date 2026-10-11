@@ -7,7 +7,8 @@
 import { useCallback, useState } from "react";
 
 import type { InstancePatch, InstanceView } from "@/components/widgets/instance-context";
-import { CARDS, cardKey, type SectionId } from "@/components/widgets/registry";
+import { CARDS, cardKey } from "@/components/widgets/registry";
+import type { SectionId } from "@/lib/sections";
 import { api } from "@/lib/api";
 
 export const key = (i: InstanceView) => cardKey(i.serviceId, i.widgetId);

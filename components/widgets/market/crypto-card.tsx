@@ -1,7 +1,7 @@
 "use client";
 
 /** the crypto widget: hearted coins w/ live prices (drag to reorder), and a search tab to add
- * more. the list lives in an httpOnly cookie through /api/market/crypto-watchlist */
+ * more. the list is the coins param of the user's widget */
 
 import { ArrowRight, Bitcoin, Search } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -10,7 +10,7 @@ import { SortableList } from "@/components/sortable-list";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
-import { CRYPTO_MAX } from "@/server/crypto-watchlist";
+import { CRYPTO_MAX } from "@/lib/crypto-watchlist";
 import type { CryptoPayload } from "@/server/services/market/widgets/crypto";
 
 import { useWidgetData } from "../use-widget-data";

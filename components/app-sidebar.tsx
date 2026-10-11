@@ -58,7 +58,7 @@ export function AppSidebar() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
-  // /services and /services/github both light up the services entry
+  // a page under an entry (/settings#privacy, a future /services/x) lights it up too
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   async function handleLogOut() {
@@ -130,7 +130,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton>
+                  <SidebarMenuButton aria-label={`Account menu, ${session.user.name}`}>
                     <UserAvatar name={session.user.name} image={session.user.image} size="sm" />
                     <span className="truncate">{session.user.name}</span>
                   </SidebarMenuButton>

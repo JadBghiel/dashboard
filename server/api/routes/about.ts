@@ -57,10 +57,3 @@ export function buildAbout(
     },
   };
 }
-
-/** the caller ip. behind docker, vercel or any proxy the socket is the proxy, so the real client
- * is the 1st entry of x-forwarded-for. its only displayed, never trusted for anything */
-export function clientHost(headers: Headers): string {
-  const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || headers.get("x-real-ip") || "unknown";
-}

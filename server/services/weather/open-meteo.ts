@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-import { fetchOnceMore } from "../http";
+import { getJson } from "../http";
 
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -58,12 +58,6 @@ const ReportResponse = z.object({
     .optional(),
 });
 
-async function getJson(url: URL, signal: AbortSignal): Promise<unknown> {
-  const res = await fetchOnceMore(url, { signal, headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error(`open-meteo ${url.pathname} answered ${res.status}`);
-  return res.json();
-}
-
 const unitParams = (url: URL, units: Units) => {
   if (units === "imperial") {
     url.searchParams.set("temperature_unit", "fahrenheit");
@@ -89,7 +83,9 @@ export async function geocode(query: string, signal: AbortSignal, count = 5): Pr
   url.searchParams.set("language", "en");
   url.searchParams.set("format", "json");
 
-  const { results = [] } = GeocodingResponse.parse(await getJson(url, signal));
+  const { results = [] } = GeocodingResponse.parse(
+    await getJson(url, { signal, what: "open-meteo geocoding" }),
+  );
   const places = results.map((r) => ({
     name: r.name,
     country: r.country,
@@ -128,7 +124,9 @@ export async function weatherReport(
   url.searchParams.set("timezone", "auto");
   unitParams(url, units);
 
-  const { current, daily } = ReportResponse.parse(await getJson(url, signal));
+  const { current, daily } = ReportResponse.parse(
+    await getJson(url, { signal, what: "open-meteo" }),
+  );
   return {
     temp: current.temperature_2m,
     feelsLike: current.apparent_temperature,

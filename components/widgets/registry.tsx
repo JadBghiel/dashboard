@@ -2,6 +2,8 @@
  * keyed "service/widget" like the server registry, so a saved widget maps straight to its card. a new
  * widget is 1 entry here + its defineWidget on the server */
 
+import type { SectionId } from "@/lib/sections";
+
 import type { ExtraSettings } from "./instance-context";
 
 import { BeeCard } from "./games/bee-card";
@@ -22,27 +24,14 @@ import { OnThisDayCard } from "./tools/on-this-day-card";
 import { TranslatorCard } from "./tools/translator-card";
 import { CurrentWeatherCard } from "./weather/current-weather-card";
 
-export type SectionId = "utility" | "news" | "games";
-
-// the dashboard sections, in order
-export const SECTIONS: { id: SectionId; title: string; description: string; grid?: string }[] = [
-  { id: "utility", title: "Utility", description: "Weather, markets and everyday tools" },
-  {
-    id: "news",
-    title: "News",
-    description: "What's happening, live, and the headlines you follow",
-    // the map and live tv side by side on a wide screen, the headlines under them
-    grid: "grid grid-cols-1 items-start gap-4 lg:grid-cols-5",
-  },
-  {
-    id: "games",
-    title: "Games",
-    description: "Daily puzzles, the same for everyone, new ones at midnight UTC",
-  },
-];
+// a section's own grid, the others use the default. news: the map and live tv side by side on a
+// wide screen, the headlines under them
+export const SECTION_GRID: Partial<Record<SectionId, string>> = {
+  news: "grid grid-cols-1 items-start gap-4 lg:grid-cols-5",
+};
 
 // what a card gets from the dashboard. onChange saves a change made inside the card (a heart, a
-// currency) to the user's widget, a no-op when nobody is signed in
+// currency) to the user's widget
 type Ctx = { locationKey: string; onChange: (patch: Record<string, unknown>) => void };
 // the saved options, already parsed by the widget schema on the server
 type P = Record<string, unknown>;
@@ -54,6 +43,8 @@ type CardDef = {
   // options the card has its own control for, the settings window leaves them out
   notInSettings?: readonly string[];
   ExtraSettings?: ExtraSettings;
+  // a daily puzzle: it changes at midnight utc and loads w/ the page, a refresh rate means nothing
+  daily?: boolean;
   render: (params: P, ctx: Ctx) => React.ReactNode;
 };
 
@@ -185,14 +176,17 @@ export const CARDS: Record<string, CardDef> = {
   },
   "games/wordle": {
     section: "games",
+    daily: true,
     render: (p) => <WordleCard length={num(p.length)} hardMode={bool(p.hard_mode)} />,
   },
   "games/flag_guesser": {
     section: "games",
+    daily: true,
     render: (p) => <FlagCard tries={num(p.tries)} hints={bool(p.hints)} />,
   },
   "games/spelling_bee": {
     section: "games",
+    daily: true,
     render: (p) => <BeeCard minLength={num(p.min_length)} />,
   },
   "games/game_2048": {

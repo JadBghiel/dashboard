@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { defineWidget, WidgetError } from "@/server/registry/define";
 
-import { CoinId, CRYPTO_MAX } from "@/server/crypto-watchlist";
+import { CoinId, CRYPTO_MAX } from "@/lib/crypto-watchlist";
 
 import { coinPrices } from "../coingecko";
 

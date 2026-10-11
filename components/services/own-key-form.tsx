@@ -9,6 +9,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { removeKey } from "@/lib/account-actions";
 import { api } from "@/lib/api";
 
 export function OwnKeyForm({
@@ -54,11 +55,9 @@ export function OwnKeyForm({
   async function remove() {
     setBusy(true);
     setMessage(null);
-    const res = await api.credentials[":serviceId"]
-      .$delete({ param: { serviceId } })
-      .catch(() => null);
+    const failure = await removeKey(serviceId);
     setBusy(false);
-    if (!res?.ok) return setMessage("Could not remove the key, try again.");
+    if (failure) return setMessage(failure);
     setHint(null);
     setMessage(
       appKey

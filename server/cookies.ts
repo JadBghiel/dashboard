@@ -6,14 +6,14 @@ import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { z } from "zod";
 
-const PREF_MAX_AGE = 60 * 60 * 24 * 365;
+const MAX_AGE = 60 * 60 * 24 * 365;
 
-export const prefCookie = (url: string) =>
+const options = (url: string) =>
   ({
     path: "/",
     httpOnly: true,
     sameSite: "Lax",
-    maxAge: PREF_MAX_AGE,
+    maxAge: MAX_AGE,
     secure: new URL(url).protocol === "https:",
   }) as const;
 
@@ -37,4 +37,4 @@ export const readJsonCookie = <S extends z.ZodType>(c: Context, name: string, sc
   parseJsonCookie(getCookie(c, name), schema);
 
 export const writeJsonCookie = (c: Context, name: string, value: unknown) =>
-  setCookie(c, name, JSON.stringify(value), prefCookie(c.req.url));
+  setCookie(c, name, JSON.stringify(value), options(c.req.url));

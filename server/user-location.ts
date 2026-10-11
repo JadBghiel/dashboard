@@ -4,10 +4,14 @@
 
 import { currentUserId } from "@/server/auth/current-user";
 import { db } from "@/server/db";
-import { DEFAULT_LOCATION, resolveSaved, type SavedLocation } from "@/server/location";
+import {
+  DEFAULT_LOCATION,
+  resolveSaved,
+  savedLocationOf,
+  type HeaderReader,
+  type SavedLocation,
+} from "@/server/location";
 import type { UserLocation } from "@/server/registry/define";
-
-type HeaderReader = Pick<Headers, "get" | "has">;
 
 export type LocationState = {
   location: UserLocation;
@@ -22,12 +26,8 @@ export async function locationState(headers: HeaderReader): Promise<LocationStat
     where: { userId },
     select: { locationName: true, lat: true, lon: true, country: true, locationConsent: true },
   });
-  const saved: SavedLocation | null =
-    row?.locationName && row.lat != null && row.lon != null
-      ? { name: row.locationName, lat: row.lat, lon: row.lon, country: row.country ?? undefined }
-      : null;
   const consent = row?.locationConsent ?? null;
-  return { location: resolveSaved(saved, headers, consent === true), consent };
+  return { location: resolveSaved(savedLocationOf(row), headers, consent === true), consent };
 }
 
 export const userLocation = async (headers: HeaderReader) =>

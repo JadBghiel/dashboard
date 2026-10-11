@@ -2,13 +2,9 @@
  * for a signed in user, so they follow the account. a visitor gets the defaults, their theme stays
  * the browser's own choice */
 
+import { TEXT_SIZES, THEMES, type TextSize, type Theme } from "@/lib/display";
 import { currentUserId } from "@/server/auth/current-user";
 import { db } from "@/server/db";
-
-export const TEXT_SIZES = ["small", "normal", "large"] as const;
-export const THEMES = ["system", "light", "dark"] as const;
-export type TextSize = (typeof TEXT_SIZES)[number];
-export type Theme = (typeof THEMES)[number];
 
 export type DisplaySettings = { signedIn: boolean; textSize: TextSize; theme: Theme };
 

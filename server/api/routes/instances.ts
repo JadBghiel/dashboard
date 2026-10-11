@@ -1,10 +1,9 @@
-/** the signed in user's widgets: list, add, configure, remove, reorder. who the user is comes from
- * currentUserId, the logic and the per user scoping live in server/instances.ts */
+/** the signed in user's widgets: list, add, configure, remove, reorder. the logic and the per user
+ * scoping live in server/instances.ts */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
-import { currentUserId } from "@/server/auth/current-user";
 import {
   createInstance,
   deleteInstance,
@@ -15,6 +14,7 @@ import {
 } from "@/server/instances";
 
 import { errorResponse, type ApiError } from "../errors";
+import { json, unauthorized, userOf } from "../shared";
 
 const Instance = z.object({
   id: z.string(),
@@ -28,14 +28,9 @@ const List = z.object({ instances: z.array(Instance) });
 const Id = z.object({ id: z.string().min(1).max(40) });
 const Params = z.record(z.string(), z.unknown());
 
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
-  description,
-  content: { "application/json": { schema } },
-});
 const body = <T extends z.ZodType>(schema: T) => ({
   body: { content: { "application/json": { schema } } },
 });
-const unauthorized = { 401: errorResponse("not signed in") };
 
 export const listInstancesRoute = createRoute({
   method: "get",
@@ -115,26 +110,22 @@ export const reorderInstancesRoute = createRoute({
   },
 });
 
-const NO_USER: ApiError = { code: "unauthorized", message: "Sign in to see your dashboard." };
-
 function failed(c: Context, err: unknown) {
   if (!(err instanceof InstanceError)) throw err;
   const body: ApiError = {
-    code: err.status === 404 ? "not_found" : "bad_request",
+    code: err.status === 404 ? "not_found" : "invalid_request",
     message: err.message,
   };
   return err.status === 404 ? c.json(body, 404) : c.json(body, 400);
 }
 
 export const listInstancesHandler: RouteHandler<typeof listInstancesRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(NO_USER, 401);
+  const userId = await userOf(c);
   return c.json({ instances: (await listInstances(userId)) as z.infer<typeof Instance>[] }, 200);
 };
 
 export const createInstanceHandler: RouteHandler<typeof createInstanceRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(NO_USER, 401);
+  const userId = await userOf(c);
   const input = c.req.valid("json");
   try {
     const row = await createInstance(userId, input);
@@ -145,8 +136,7 @@ export const createInstanceHandler: RouteHandler<typeof createInstanceRoute> = a
 };
 
 export const updateInstanceHandler: RouteHandler<typeof updateInstanceRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(NO_USER, 401);
+  const userId = await userOf(c);
   try {
     const row = await updateInstance(userId, c.req.valid("param").id, c.req.valid("json"));
     return c.json(row as z.infer<typeof Instance>, 200);
@@ -154,13 +144,12 @@ export const updateInstanceHandler: RouteHandler<typeof updateInstanceRoute> = a
     // no subscription check on a change, only 404 or bad values
     if (!(err instanceof InstanceError)) throw err;
     if (err.status === 404) return c.json({ code: "not_found", message: err.message }, 404);
-    return c.json({ code: "bad_request", message: err.message }, 400);
+    return c.json({ code: "invalid_request", message: err.message }, 400);
   }
 };
 
 export const deleteInstanceHandler: RouteHandler<typeof deleteInstanceRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(NO_USER, 401);
+  const userId = await userOf(c);
   try {
     await deleteInstance(userId, c.req.valid("param").id);
     return c.body(null, 204);
@@ -170,13 +159,12 @@ export const deleteInstanceHandler: RouteHandler<typeof deleteInstanceRoute> = a
 };
 
 export const reorderInstancesHandler: RouteHandler<typeof reorderInstancesRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(NO_USER, 401);
+  const userId = await userOf(c);
   try {
     const rows = await reorderInstances(userId, c.req.valid("json").ids);
     return c.json({ instances: rows as z.infer<typeof Instance>[] }, 200);
   } catch (err) {
     if (!(err instanceof InstanceError)) throw err;
-    return c.json({ code: "bad_request", message: err.message }, 400);
+    return c.json({ code: "invalid_request", message: err.message }, 400);
   }
 };

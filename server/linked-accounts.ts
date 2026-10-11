@@ -4,14 +4,14 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/server/db";
 
-/** provider id (github, google) -> its account row, for the status badges and the disconnect btn.
- * no token read */
-export async function linkedAccounts(userId: string): Promise<Map<string, string>> {
-  const rows = await db.account.findMany({
+/** the user's account rows, oldest 1st: "credential" (the password), google, github. for the
+ * status badges and the unlink btns, no token read */
+export function linkedAccounts(userId: string): Promise<{ id: string; providerId: string }[]> {
+  return db.account.findMany({
     where: { userId },
     select: { id: true, providerId: true },
+    orderBy: { createdAt: "asc" },
   });
-  return new Map(rows.map((r) => [r.providerId, r.id]));
 }
 
 /** the user's token for that provider, null when they never linked it, or when the server lost the

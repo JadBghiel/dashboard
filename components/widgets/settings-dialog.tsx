@@ -60,6 +60,7 @@ export function SettingsDialog({
             spec={ctx.spec}
             notInSettings={ctx.notInSettings}
             ExtraSettings={ctx.ExtraSettings}
+            daily={ctx.daily}
             initialParams={ctx.instance.params}
             initialRefresh={ctx.instance.refreshSec}
             submitLabel="Save"
@@ -82,6 +83,7 @@ export function WidgetForm({
   spec,
   notInSettings,
   ExtraSettings,
+  daily = false,
   initialParams,
   initialRefresh,
   submitLabel,
@@ -91,6 +93,8 @@ export function WidgetForm({
   spec: WidgetSpec;
   notInSettings: readonly string[];
   ExtraSettings?: ExtraSettings;
+  // a daily puzzle: no refresh rate to pick, it keeps the default
+  daily?: boolean;
   initialParams: Record<string, unknown>;
   initialRefresh: number;
   submitLabel: string;
@@ -120,21 +124,23 @@ export function WidgetForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="refresh-rate">Refresh rate</Label>
-        <Select value={String(refreshSec)} onValueChange={(v) => setRefreshSec(Number(v))}>
-          <SelectTrigger id="refresh-rate" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {rates.map((r) => (
-              <SelectItem key={r} value={String(r)}>
-                {rateLabel(r)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {!daily && (
+        <div className="space-y-1.5">
+          <Label htmlFor="refresh-rate">Refresh rate</Label>
+          <Select value={String(refreshSec)} onValueChange={(v) => setRefreshSec(Number(v))}>
+            <SelectTrigger id="refresh-rate" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {rates.map((r) => (
+                <SelectItem key={r} value={String(r)}>
+                  {rateLabel(r)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {fields.map((p) => (
         <Field

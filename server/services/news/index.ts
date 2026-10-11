@@ -4,7 +4,7 @@
 import { z } from "zod";
 
 import { CountryCode } from "@/server/location";
-import { NEWS_LANGUAGES, NEWS_TOPICS } from "@/server/news-prefs";
+import { NEWS_LANGUAGES, NEWS_TOPICS } from "@/lib/news-prefs";
 import { defineService, defineWidget, WidgetError } from "@/server/registry/define";
 
 import { fetchFeed, languageFor, type Feed } from "./google-news";

@@ -5,4 +5,4 @@ export const authClient = createAuthClient({
   plugins: [usernameClient(), adminClient()],
 });
 
-export const { useSession, signOut } = authClient; //Other files will be able to keep importing it by name
+export const { useSession } = authClient;

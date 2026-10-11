@@ -4,7 +4,7 @@
  * lib/auth.ts to reject obviously weak passwords on signup, see #9.
  */
 
-export const COMMON_PASSWORDS = new Set(
+const COMMON_PASSWORDS = new Set(
   [
     "123456",
     "password",

@@ -4,7 +4,7 @@
 export type Board = number[][];
 export type Direction = "up" | "down" | "left" | "right";
 
-export const emptyBoard = (size: number): Board =>
+const emptyBoard = (size: number): Board =>
   Array.from({ length: size }, () => Array<number>(size).fill(0));
 
 /** slides 1 row toward index 0 and merges equal neighbours once each: [2,2,2,0] -> [4,2,0,0] */

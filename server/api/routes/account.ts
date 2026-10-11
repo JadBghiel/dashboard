@@ -5,10 +5,10 @@
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
 
-import { currentUserId } from "@/server/auth/current-user";
+import { today } from "@/lib/day";
 import { db } from "@/server/db";
 
-import { errorResponse, type ApiError } from "../errors";
+import { json, unauthorized, userOf } from "../shared";
 
 export const exportRoute = createRoute({
   method: "get",
@@ -16,20 +16,16 @@ export const exportRoute = createRoute({
   tags: ["account"],
   summary: "download all your data as json",
   responses: {
-    200: {
-      description:
-        "your account, linked accounts, sessions, settings, widgets and saved keys (no secrets or tokens)",
-      content: { "application/json": { schema: z.record(z.string(), z.unknown()) } },
-    },
-    401: errorResponse("not signed in"),
+    200: json(
+      "your account, linked accounts, sessions, settings, widgets and saved keys (no secrets or tokens)",
+      z.record(z.string(), z.unknown()),
+    ),
+    ...unauthorized,
   },
 });
 
-const noUser: ApiError = { code: "unauthorized", message: "Sign in to download your data." };
-
 export const exportData: RouteHandler<typeof exportRoute> = async (c) => {
-  const userId = await currentUserId(c.req.raw.headers);
-  if (!userId) return c.json(noUser, 401);
+  const userId = await userOf(c);
 
   const [account, linkedAccounts, sessions, settings, widgets, apiKeys] = await Promise.all([
     db.user.findUnique({
@@ -78,8 +74,7 @@ export const exportData: RouteHandler<typeof exportRoute> = async (c) => {
     }),
   ]);
 
-  const day = new Date().toISOString().slice(0, 10);
-  c.header("Content-Disposition", `attachment; filename="dashboard-data-${day}.json"`);
+  c.header("Content-Disposition", `attachment; filename="dashboard-data-${today()}.json"`);
   return c.json(
     {
       exportedAt: new Date().toISOString(),

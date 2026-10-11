@@ -2,7 +2,10 @@
  * from the cache (server/widget-cache.ts) or fetched w/ a timeout, and checked against the payload
  * schema before it goes out or into the cache */
 
+import { today } from "@/lib/day";
+import { firstIssue } from "@/lib/zod-issue";
 import { DEFAULT_LOCATION } from "@/server/location";
+import { UPSTREAM_TIMEOUT_MS } from "@/server/services/http";
 import { cached, cacheKey } from "@/server/widget-cache";
 
 import { WidgetError, type FetchContext, type WidgetDef } from "./define";
@@ -13,8 +16,6 @@ export type RunResult =
   | { ok: true; data: unknown; stale: boolean }
   | { ok: false; reason: "invalid_params" | "widget" | "upstream"; message: string };
 
-const TIMEOUT_MS = 8000;
-
 export async function runWidget(
   serviceId: string,
   widget: WidgetDef,
@@ -23,13 +24,7 @@ export async function runWidget(
 ): Promise<RunResult> {
   const parsed = widget.params.safeParse(rawParams ?? {});
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const path = issue.path.join(".");
-    return {
-      ok: false,
-      reason: "invalid_params",
-      message: path ? `${path}: ${issue.message}` : issue.message,
-    };
+    return { ok: false, reason: "invalid_params", message: firstIssue(parsed.error) };
   }
 
   // a widget that didnt declare usesLocation gets the default city, never the user's: the cache key
@@ -44,7 +39,7 @@ export async function runWidget(
   const key = cacheKey(`${serviceId}/${widget.id}`, {
     params: parsed.data,
     location: widget.usesLocation ? location : null,
-    day: new Date().toISOString().slice(0, 10),
+    day: today(),
   });
 
   // the timeout only, not the request's signal: an identical request may be sharing this fetch, 1
@@ -54,7 +49,7 @@ export async function runWidget(
       ...ctx,
       location,
       params: parsed.data,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     const payload = widget.payload.safeParse(raw);
     if (!payload.success) {

@@ -1,5 +1,5 @@
 /** dev seed: 1 admin and 1 verified demo user, written the way better-auth sign up writes them so
- * they can log in once auth lands in #7. safe to rerun, a user that already exists is left alone */
+ * they can log in right away. safe to rerun, a user that already exists is left alone */
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { generateRandomString, hashPassword } from "better-auth/crypto";

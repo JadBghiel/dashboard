@@ -3,8 +3,9 @@
  * a row that isnt yours answers exactly like a row that doesnt exist */
 
 import type { Prisma } from "@/generated/prisma/client";
-import { DEFAULT_COINS } from "@/server/crypto-watchlist";
-import { DEFAULT_TICKERS } from "@/server/market-watchlist";
+import { firstIssue } from "@/lib/zod-issue";
+import { DEFAULT_COINS } from "@/lib/crypto-watchlist";
+import { DEFAULT_TICKERS } from "@/lib/market-watchlist";
 import { db } from "@/server/db";
 import { registry } from "@/server/registry";
 import type { WidgetDef } from "@/server/registry/define";
@@ -65,8 +66,7 @@ function widgetOf(serviceId: string, widgetId: string) {
 function parseParams(widget: WidgetDef, params: unknown) {
   const parsed = widget.params.safeParse(params);
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    throw new InstanceError(400, `${issue.path.join(".") || "params"}: ${issue.message}`);
+    throw new InstanceError(400, firstIssue(parsed.error, "params"));
   }
   // params are only strings, integers and booleans (describeParams enforces it), valid json
   return parsed.data as Prisma.InputJsonObject;

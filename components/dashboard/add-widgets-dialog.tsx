@@ -15,12 +15,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CARDS, type SectionId } from "@/components/widgets/registry";
+import { CARDS } from "@/components/widgets/registry";
+import { SECTIONS } from "@/lib/sections";
 import { defaultParams, WidgetForm } from "@/components/widgets/settings-dialog";
 
 import type { Spec } from "./dashboard";
-
-const TITLES: Record<SectionId, string> = { utility: "Utility", news: "News", games: "Games" };
 
 export function AddWidgetsDialog({
   open,
@@ -78,6 +77,7 @@ export function AddWidgetsDialog({
               spec={spec}
               notInSettings={CARDS[picked].notInSettings ?? []}
               ExtraSettings={CARDS[picked].ExtraSettings}
+              daily={CARDS[picked].daily}
               initialParams={defaultParams(spec)}
               initialRefresh={spec.refresh.default}
               submitLabel="Add widget"
@@ -94,10 +94,10 @@ export function AddWidgetsDialog({
                 own settings.
               </DialogDescription>
             </DialogHeader>
-            {(Object.keys(TITLES) as SectionId[]).map((section) => (
+            {SECTIONS.map(({ id: section, title }) => (
               <div key={section} className="space-y-2">
                 <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                  {TITLES[section]}
+                  {title}
                 </h3>
                 <ul className="divide-y rounded-lg border">
                   {keys
@@ -109,7 +109,6 @@ export function AddWidgetsDialog({
                           <button
                             type="button"
                             onClick={() => setPicked(k)}
-                            data-cursor={`pick-${k}`}
                             className="hover:bg-muted/50 focus-visible:bg-muted/50 flex w-full items-center justify-between gap-4 px-3 py-2.5 text-left outline-none"
                           >
                             <span className="min-w-0">

@@ -5,10 +5,11 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 
+import { firstIssue } from "@/lib/zod-issue";
 import { registry } from "@/server/registry";
 
 import { notFound, onError, type ApiError } from "./errors";
-import { aboutRoute, buildAbout, clientHost } from "./routes/about";
+import { aboutRoute, buildAbout } from "./routes/about";
 import {
   deleteLocation,
   deleteLocationRoute,
@@ -80,7 +81,7 @@ import {
 } from "./routes/credentials";
 import { bodyLimit } from "hono/body-limit";
 
-import { rateLimit } from "@/server/rate-limit";
+import { clientIp, rateLimit } from "@/server/rate-limit";
 import { widgetData, widgetDataRoute } from "./routes/widgets";
 
 import type { Context, Next } from "hono";
@@ -93,15 +94,7 @@ const app = new OpenAPIHono({
   // 1 place for every zod failure, so a bad body reads like any other error
   defaultHook: (result, c) => {
     if (!result.success) {
-      const issue = result.error.issues[0];
-      const path = issue.path.join(".");
-      return c.json<ApiError>(
-        {
-          code: "invalid_request",
-          message: path ? `${path}: ${issue.message}` : issue.message,
-        },
-        400,
-      );
+      return c.json<ApiError>({ code: "invalid_request", message: firstIssue(result.error) }, 400);
     }
   },
 }).basePath("/api");
@@ -128,7 +121,7 @@ app.use("*", (c, next) =>
 // users only, like the pages. /about.json, the service catalog and auth stay open
 const signedIn = async (c: Context, next: Next) => {
   if (await currentUserId(c.req.raw.headers)) return next();
-  return c.json<ApiError>({ code: "unauthorized", message: "Log in to use the widgets." }, 401);
+  return c.json<ApiError>({ code: "unauthorized", message: "Log in first." }, 401);
 };
 for (const path of ["/widgets/*", "/market/*", "/tools/*", "/games/*", "/location", "/location/*"])
   app.use(path, signedIn);
@@ -144,7 +137,7 @@ const routes = app
     c.json({ message: "pong" as const, time: Math.floor(Date.now() / 1000) }, 200),
   )
   .openapi(aboutRoute, (c) =>
-    c.json(buildAbout(clientHost(c.req.raw.headers), registry.catalog), 200),
+    c.json(buildAbout(clientIp(c.req.raw.headers), registry.catalog), 200),
   )
   .openapi(getLocationRoute, getLocation)
   .openapi(putLocationRoute, putLocation)

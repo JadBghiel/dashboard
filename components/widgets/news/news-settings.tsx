@@ -1,6 +1,7 @@
 "use client";
 
-/** the news options in the settings window, they replace the old gear popover */
+/** the news options in the settings window: topics as chips, keywords as tags, country and
+ * language from short lists */
 
 import { X } from "lucide-react";
 import { useState } from "react";
@@ -16,19 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { NEWS_LANGUAGES as LANGUAGES, NEWS_TOPICS as TOPICS } from "@/lib/news-prefs";
 import { cn } from "@/lib/utils";
 
-const TOPICS = [
-  "world",
-  "local",
-  "business",
-  "technology",
-  "science",
-  "health",
-  "sports",
-  "entertainment",
-] as const;
-const LANGUAGES = ["en", "fr", "es", "de", "it", "pt", "nl", "ja", "ko"] as const;
 // google's biggest editions, the ones worth offering in a short list
 // prettier-ignore
 const COUNTRIES = ["US", "GB", "CA", "AU", "IN", "IE", "FR", "BE", "CH", "DE", "AT", "ES", "MX", "AR",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TickerSymbol, WATCHLIST_MAX } from "@/server/market-watchlist";
+import { TickerSymbol, WATCHLIST_MAX } from "@/lib/market-watchlist";
 import { defineWidget, WidgetError } from "@/server/registry/define";
 
 import { profile, quote, UnknownTickerError } from "../finnhub";

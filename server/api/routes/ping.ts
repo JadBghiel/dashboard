@@ -1,8 +1,8 @@
-/** the 1 route the api ships w/ until the real ones land, docker alsoo chekc this*/
+/** a health check: answers w/o the db or any upstream */
 
 import { createRoute, z } from "@hono/zod-openapi";
 
-export const PingResponse = z.object({
+const PingResponse = z.object({
   message: z.literal("pong"),
   // epoch seconds, same unit as about.json current_time
   time: z.number().int(),

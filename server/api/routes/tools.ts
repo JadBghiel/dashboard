@@ -2,17 +2,11 @@
  * anything goes upstream, and upstream failures come back as { code, message } like everywhere */
 
 import { createRoute, z, type RouteHandler } from "@hono/zod-openapi";
-import type { Context } from "hono";
 
-import { WidgetError } from "@/server/registry/define";
 import { languageCodes, translate } from "@/server/services/tools/upstreams";
 
 import { errorResponse } from "../errors";
-
-const json = <T extends z.ZodType>(description: string, schema: T) => ({
-  description,
-  content: { "application/json": { schema } },
-});
+import { json, timeout, upstreamFailure } from "../shared";
 
 export const translateRoute = createRoute({
   method: "post",
@@ -42,19 +36,11 @@ export const translateRoute = createRoute({
   },
 });
 
-const timeout = (c: Context) => AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(8000)]);
-
 export const translateText: RouteHandler<typeof translateRoute> = async (c) => {
   const { text, from, to } = c.req.valid("json");
   try {
     return c.json({ text: await translate(text, from, to, timeout(c)) }, 200);
   } catch (err) {
-    if (err instanceof WidgetError)
-      return c.json({ code: "widget_error", message: err.message }, 422);
-    console.error("translate failed", err);
-    return c.json(
-      { code: "upstream_error", message: "Translation is unavailable right now." },
-      502,
-    );
+    return upstreamFailure(c, err, "Translation");
   }
 };

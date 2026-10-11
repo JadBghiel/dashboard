@@ -23,6 +23,19 @@ export const SavedLocation = z.object({
 });
 export type SavedLocation = z.infer<typeof SavedLocation>;
 
+/** the city saved in the user's settings row, null when they never picked 1 */
+export function savedLocationOf(
+  row: {
+    locationName: string | null;
+    lat: number | null;
+    lon: number | null;
+    country: string | null;
+  } | null,
+): SavedLocation | null {
+  if (!row?.locationName || row.lat == null || row.lon == null) return null;
+  return { name: row.locationName, lat: row.lat, lon: row.lon, country: row.country ?? undefined };
+}
+
 export const DEFAULT_LOCATION: UserLocation = {
   name: "Madrid",
   lat: 40.4165,
@@ -34,7 +47,7 @@ export const DEFAULT_LOCATION: UserLocation = {
 /** vercel adds these to every request from its edge. theyre absent in docker and in dev, and
  * spoofing them only changes your own weather, so theyre safe to use as a guess */
 // only get and has, so next's read only headers() fits as well as a fetch Request's headers
-type HeaderReader = Pick<Headers, "get" | "has">;
+export type HeaderReader = Pick<Headers, "get" | "has">;
 
 function ipLocation(headers: HeaderReader): UserLocation | null {
   if (!headers.has("x-vercel-ip-latitude") || !headers.has("x-vercel-ip-longitude")) return null;

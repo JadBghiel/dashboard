@@ -40,8 +40,8 @@ export function useWidgetData<T>(
   service: string,
   widget: string,
   params: Record<string, unknown>,
-  // changes when something the server reads from a cookie changes, so the card refetches: the
-  // location for weather, the hearted tickers for the market
+  // changes when something the server reads on its own changes, so the card refetches: the
+  // user's location for the weather, the holidays and the news
   refetchKey: string,
 ) {
   // params as a string so a new object w/ the same values doesnt refetch

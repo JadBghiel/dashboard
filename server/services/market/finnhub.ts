@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { WidgetError } from "@/server/registry/define";
 
-import { fetchOnceMore, ttlCache, UpstreamError } from "../http";
+import { cachedWithFallback, fetchOnceMore, ttlCache, UpstreamError } from "../http";
 
 const BASE_URL = "https://finnhub.io/api/v1";
 
@@ -119,21 +119,16 @@ const QuoteResponse = z.object({
   t: z.number(),
 });
 
-const quoteCache = ttlCache<Quote>(60_000);
-// never expires on purpose: the whole point is to still have something when finnhub is down
-const lastGood = new Map<string, Quote>();
+// 60s fresh, and the last good price when finnhub fails. prices arent personal, so the cache is
+// shared whichever key fetched them
+const quotes = cachedWithFallback<Quote>(60_000);
 
-// prices arent personal, so the caches are shared whichever key fetched them
 export async function quote(symbol: string, signal: AbortSignal, ownKey?: string): Promise<Quote> {
-  const hit = quoteCache.get(symbol);
-  if (hit) return hit;
-
-  try {
+  const { value, stale } = await quotes(symbol, async () => {
     const q = QuoteResponse.parse(await getJson("/quote", { symbol }, signal, ownKey));
     // an unknown symbol isnt an error for finnhub, it answers all zeros
     if (q.t === 0 && q.c === 0) throw new UnknownTickerError(symbol);
-
-    const fresh: Quote = {
+    return {
       price: q.c,
       change: q.d ?? 0,
       changePct: q.dp ?? 0,
@@ -144,18 +139,8 @@ export async function quote(symbol: string, signal: AbortSignal, ownKey?: string
       time: q.t,
       stale: false,
     };
-    quoteCache.set(symbol, fresh);
-    if (lastGood.size >= 500 && !lastGood.has(symbol))
-      lastGood.delete(lastGood.keys().next().value!);
-    lastGood.set(symbol, fresh);
-    return fresh;
-  } catch (err) {
-    // an unknown ticker or a missing key is the user's to fix, a stale price wouldnt help
-    if (err instanceof WidgetError) throw err;
-    const last = lastGood.get(symbol);
-    if (last) return { ...last, stale: true };
-    throw err;
-  }
+  });
+  return stale ? { ...value, stale: true } : value;
 }
 
 // ---- company profile ----
