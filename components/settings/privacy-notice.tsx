@@ -22,6 +22,7 @@ const SERVER_SIDE = [
   ["Open-Meteo", "weather and city search"],
   ["Finnhub", "stock prices"],
   ["GitHub", "your notifications and public repositories, only once you connect your account"],
+  ["Finnhub and CoinGecko", "company and coin logos, sent to you from our server"],
   ["CoinGecko", "crypto prices"],
   ["Frankfurter (European Central Bank rates)", "currency rates"],
   ["Nager.Date", "public holidays"],
@@ -34,7 +35,6 @@ const SERVER_SIDE = [
 
 // loaded straight by your browser, like any image or video on a website
 const BROWSER_SIDE = [
-  ["Finnhub and CoinGecko", "company and coin logos"],
   ["Google", "the small icons of news sites"],
   ["YouTube (privacy enhanced mode)", "the live news player, only after you press play"],
 ];

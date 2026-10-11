@@ -10,9 +10,11 @@ const nextConfig: NextConfig = {
     root: import.meta.dirname,
   },
 
-  // company and coin logos come straight from finnhub's and coingecko's cdn, every other host stays
-  // blocked
+  // company and coin logos, fetched by our server from finnhub's and coingecko's cdn and served from
+  // our domain. every other host stays blocked. a logo doesnt change, kept 30 days so the optimizer
+  // rarely runs
   images: {
+    minimumCacheTTL: 2_592_000,
     remotePatterns: [
       new URL("https://static2.finnhub.io/file/publicdatany/finnhubimage/**"),
       new URL("https://coin-images.coingecko.com/coins/images/**"),
