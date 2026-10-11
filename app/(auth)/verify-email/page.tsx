@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
+import { currentUserId } from "@/server/auth/current-user";
 
 // better-auth's error codes, as it appends them to the callback url (?error=TOKEN_EXPIRED). logging in
 // w/ an unconfirmed email mails a fresh link (sendOnSignIn in lib/auth.ts)
@@ -33,6 +36,22 @@ export default async function VerifyEmailPage({
   }
   // the login form's callback: a plain login, or the link it mailed, either way the user is in
   if (from === "login") redirect("/dashboard");
+
+  // a good link signs the user in (autoSignInAfterVerification), so no session = nobody confirmed
+  // anything, just the page opened by hand
+  if (!(await currentUserId(await headers()))) {
+    return (
+      <div className="space-y-2 text-center">
+        <h1 className="text-xl font-semibold">Confirm your email</h1>
+        <p className="text-muted-foreground text-sm">
+          Open the link we emailed you to activate your account.
+        </p>
+        <Link href="/log-in" className="text-sm underline">
+          Back to log in
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 text-center">
