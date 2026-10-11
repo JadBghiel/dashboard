@@ -115,7 +115,8 @@ export default async function ServicesPage({
             </h2>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] items-start gap-4">
               {services.map((s) => (
-                <Card key={s.id} className="shadow-soft">
+                // id: the locked widget cards link here, /services#market
+                <Card key={s.id} id={s.id} className="shadow-soft scroll-mt-20">
                   <CardHeader>
                     <CardTitle>{s.name}</CardTitle>
                     <CardDescription>{s.description}</CardDescription>

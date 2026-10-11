@@ -38,7 +38,7 @@ export function StockCard({ tickers = "", change = "percent", onChange }: Props)
   const [open, setOpen] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const { data, error, loading, refresh } = useWidgetData<WatchlistPayload>(
+  const { data, error, locked, loading, refresh } = useWidgetData<WatchlistPayload>(
     "market",
     "stock_watchlist",
     // sorted: a heart or an unheart refetches, a drag only reorders what's already on screen
@@ -74,6 +74,7 @@ export function StockCard({ tickers = "", change = "percent", onChange }: Props)
       subtitle={open ? undefined : "Prices from the US markets"}
       loading={loading}
       error={error}
+      lockedTo={locked ? "market" : undefined}
       hasData={!!data}
       onRefresh={refresh}
       footer={
