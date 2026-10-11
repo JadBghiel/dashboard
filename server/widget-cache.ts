@@ -4,7 +4,8 @@
  *    the upstream, and it survives a cold start
  * 3. in flight: 2 identical requests at the same moment share 1 upstream call
  * an expired row is kept on purpose: when the upstream is down, the last good answer is served,
- * flagged stale, instead of an error */
+ * flagged stale, instead of an error. rows expired for 2 days are deleted, most keys have the day
+ * in them so nothing reads those again */
 
 import { createHash } from "node:crypto";
 
@@ -16,6 +17,20 @@ type Entry = { payload: unknown; expiresAt: number };
 const MEMORY_MAX = 1000;
 const memory = new Map<string, Entry>();
 const inFlight = new Map<string, Promise<unknown>>();
+
+const KEEP_EXPIRED_MS = 2 * 86_400_000;
+const PRUNE_EVERY_MS = 3_600_000;
+let lastPrune = 0;
+
+// at most once an hour per server copy, after a write, so no cron is needed on vercel or in docker.
+// awaited, vercel can freeze the function once the response is out
+async function pruneOld(now: number) {
+  if (now - lastPrune < PRUNE_EVERY_MS) return;
+  lastPrune = now;
+  await db.cachedResponse
+    .deleteMany({ where: { expiresAt: { lt: new Date(now - KEEP_EXPIRED_MS) } } })
+    .catch((err) => console.error("widget cache prune failed", err));
+}
 
 /** the key: the widget plus everything its answer depends on, hashed so it stays short */
 export function cacheKey(widget: string, parts: unknown) {
@@ -68,6 +83,7 @@ export async function cached(
         update: { payload: json, expiresAt },
       })
       .catch((err) => console.error("widget cache write failed", err));
+    await pruneOld(Date.now());
     return { payload, stale: false };
   } catch (err) {
     const last = hit ?? row;
