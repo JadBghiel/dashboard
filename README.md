@@ -6,7 +6,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 
 ## AVAILABLE ONLINE ON VERCEL: [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
 
-https://github.com/user-attachments/assets/b5f3d3e0-07b9-45f7-9c64-f17d69c46fd3
+https://github.com/user-attachments/assets/1afa7ca5-6ad4-4166-beed-344738a4560a
 
 ## What it is for
 
@@ -96,23 +96,24 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
 
 <table>
   <tr>
+    <td width="50%"><img src="assets/screenshots/dashboard-dark.png" alt="The dashboard: weather, stocks, crypto, GitHub, currencies, holidays and translator"><br><sub><b>Dashboard:</b> everything you follow, on one page</sub></td>
     <td width="50%"><img src="assets/screenshots/news.png" alt="News section: world map of events, live TV and headlines"><br><sub><b>News:</b> world events map, live TV and headlines</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="assets/screenshots/games.png" alt="Games section: Wordle, Flag guesser, Spelling Bee and 2048"><br><sub><b>Games:</b> new daily puzzles for everyone</sub></td>
-  </tr>
-  <tr>
     <td width="50%"><img src="assets/screenshots/widget-settings.png" alt="A widget's settings window with the refresh rate and its options"><br><sub><b>Widget settings:</b> refresh rate and options, generated from the widget's schema</sub></td>
-    <td width="50%"><img src="assets/screenshots/edit-layout.png" alt="Edit layout mode with draggable cards and a cross to remove each one"><br><sub><b>Edit layout:</b> drag to reorder, the cross removes a card</sub></td>
   </tr>
   <tr>
+    <td width="50%"><img src="assets/screenshots/edit-layout.png" alt="Edit layout mode with draggable cards and a cross to remove each one"><br><sub><b>Edit layout:</b> drag to reorder, the cross removes a card</sub></td>
     <td width="50%"><img src="assets/screenshots/add-widgets.png" alt="Add widget window, configuring a second weather widget for Paris"><br><sub><b>Add widget:</b> pick a widget, set it up, add it, as many times as you want</sub></td>
-    <td width="50%"><img src="assets/screenshots/services.png" alt="Services page with each service's status and the own key form"><br><sub><b>Services:</b> what each one needs, and your own API key</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/services.png" alt="Services page: each service's status, the own Finnhub key form and Connect GitHub"><br><sub><b>Services:</b> your own API key, or connect GitHub</sub></td>
+    <td width="50%"><img src="assets/screenshots/settings.png" alt="Settings and privacy page"><br><sub><b>Settings &amp; privacy:</b> location, display, your data, delete your account</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="assets/screenshots/log-in.png" alt="Log in page"><br><sub><b>Log in:</b> with your username or your email</sub></td>
     <td width="50%"><img src="assets/screenshots/register.png" alt="Register page"><br><sub><b>Register:</b> confirmed by an email link</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="assets/screenshots/settings.png" alt="Settings and privacy page"><br><sub><b>Settings &amp; privacy:</b> location, display, download your data</sub></td>
   </tr>
 </table>
 
@@ -212,7 +213,6 @@ outside service faked by Mock Service Worker, so the tests never touch your data
 | `npm run typecheck`  | Generate route types, then `tsc`                           |
 | `npm run format`     | Format with Prettier                                       |
 | `npm run check`      | Lint, typecheck and format check                           |
-| `npm run videos`     | Film the demo video, frame by frame (needs `npm run dev`)  |
 
 ## Technology and specifications
 
@@ -224,6 +224,23 @@ outside service faked by Mock Service Worker, so the tests never touch your data
 | Accounts | better-auth (email and password, email confirmation, Google sign-in, GitHub linking) |
 | Tests    | Vitest and Mock Service Worker                                                       |
 | Hosting  | Vercel (production), Docker Compose (the graded stack, port 8080)                    |
+
+**Why these choices**
+
+The stack stays inside the subject's recommended list (Node.js, React, Tailwind) and each piece was
+picked against an alternative:
+
+| Choice                                        | Why                                                                                                                                                                                                                | Instead of                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| **Next.js** (React, TypeScript)               | One app serves the pages and the API: one build, one Docker image, one deploy, and the same types on both sides. Pages render on the server, so the dashboard's first paint already has the user's widgets.        | A separate frontend and backend: two builds, two deploys, and types copied by hand.             |
+| **Hono + zod-openapi** for the API            | Every route declares its input and output with zod: requests are validated before any logic runs, the browser client is typed from the same code, and the API docs (`/api/docs`) are generated, never out of date. | Plain Next.js route handlers: validation and docs written separately for each route.            |
+| **A widget registry with zod parameters**     | A widget is declared once. That declaration produces `/about.json`, validates saved settings, draws the settings window and fills in the defaults, so adding a widget or an option is one change in one file.      | Hand-written forms and an `about.json` kept in sync by hand.                                    |
+| **PostgreSQL + Prisma**                       | Users, widgets, settings and keys are relational and per user. Prisma gives typed queries and versioned migrations that run on Vercel and in Docker alike. Neon hosts it in production.                            | A document store: the per-user relations and constraints would live in code.                    |
+| **better-auth**                               | Email and password with confirmation, sessions, Google sign-in, GitHub account linking and an admin plugin, self-hosted in our own database.                                                                       | A hosted auth service: user data outside our database. Writing auth by hand: easy to get wrong. |
+| **Tailwind CSS + shadcn/ui**                  | Accessible components (Radix: keyboard, focus, screen readers) that we own and style, with light and dark themes from one set of tokens.                                                                           | A closed component kit: harder to restyle and to keep accessible.                               |
+| **Server-side calls to the outside services** | API keys and user tokens never reach the browser, one cached answer serves many users, and every answer is checked against a schema before it is sent.                                                             | Calls from the browser: keys exposed, no shared cache, and every user hits the quotas.          |
+| **Vitest + Mock Service Worker**              | Fast tests on a separate database, with every outside service faked, so tests never touch real data or real APIs.                                                                                                  | Tests against the real services: slow, flaky, and they use up quotas.                           |
+| **Vercel + Docker Compose**                   | Vercel for the live site (managed, builds on each push), Docker Compose for the graded stack that the subject requires, on port 8080.                                                                              | One of the two only: no live demo, or no standard build.                                        |
 
 **How it works**
 
