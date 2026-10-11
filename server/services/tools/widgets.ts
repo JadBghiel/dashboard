@@ -30,7 +30,12 @@ export const holidaysWidget = defineWidget({
   description: "The next public holidays, in your country or any other",
   params: z.object({
     // iso code like FR or US. empty = the country you're in
-    country: z.string().trim().max(2).default(""),
+    country: z
+      .string()
+      .trim()
+      .max(2)
+      .default("")
+      .describe("Empty = where you are, or a code like FR"),
     count: z.number().int().min(1).max(10).default(5),
   }),
   refresh: { default: 86_400, min: 3600 },

@@ -71,6 +71,7 @@ export function Field({
           min={spec.min}
           max={spec.max}
           value={typeof value === "number" ? value : ""}
+          placeholder={spec.hint}
           // empty clears it (null), the widget default applies again
           onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
         />
@@ -78,6 +79,7 @@ export function Field({
         <Input
           id={id}
           value={typeof value === "string" ? value : ""}
+          placeholder={spec.hint}
           onChange={(e) => onChange(e.target.value)}
         />
       )}

@@ -6,7 +6,7 @@ import { geocode } from "./open-meteo";
 
 // shared by both widgets, so "city" means the same thing everywhere: a name, or empty for the
 // user location
-export const cityParam = z.string().trim().max(80).default("");
+export const cityParam = z.string().trim().max(80).default("").describe("Empty = where you are");
 export const unitsParam = z.enum(["metric", "imperial"]).default("metric");
 
 /** explicit city wins, empty means wherever the user is */

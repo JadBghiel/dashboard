@@ -48,7 +48,7 @@ export const headlinesWidget = defineWidget({
     keywords: z.string().trim().max(200).default(""),
     country: z.string().trim().max(2).default(""),
     language: z.enum(NEWS_LANGUAGES).optional(),
-    count: z.number().int().min(3).max(20).optional(),
+    count: z.number().int().min(3).max(20).optional().describe("Empty = 12"),
   }),
   refresh: { default: 900, min: 300 },
   cache: { ttl: 600 },
