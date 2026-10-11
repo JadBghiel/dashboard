@@ -48,7 +48,7 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
         <p className="text-muted-foreground border-t pt-3 text-xs">
           We only keep your account, your settings and your widgets, never sell or share them, and
           you can download or delete everything from Settings at any time.{" "}
-          <Link href="/settings#privacy" className="underline underline-offset-4">
+          <Link href="/privacy" className="underline underline-offset-4">
             Read what we store and why
           </Link>
           .
@@ -70,6 +70,7 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            maxLength={50}
           />
         </div>
         <div className="space-y-1">

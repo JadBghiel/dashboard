@@ -110,6 +110,7 @@ function NameForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
+          maxLength={50}
         />
       </div>
       <div className="space-y-1.5">

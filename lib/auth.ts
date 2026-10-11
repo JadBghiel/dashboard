@@ -84,6 +84,7 @@ const ACCOUNT_LIMITS: Record<
   "/sign-in/username": { field: "username", bucket: "sign-in", max: 10, window: 15 * 60 },
   //each 1 sends a mail, the inbox shouldn't get flooded from many ips either
   "/send-verification-email": { field: "email", bucket: "verify", max: 5, window: 15 * 60 },
+  "/request-password-reset": { field: "email", bucket: "reset", max: 5, window: 15 * 60 },
 };
 const accountWindows = new Map<string, { count: number; resetAt: number }>();
 
@@ -107,6 +108,27 @@ async function accountLimited(path: string, body: Record<string, unknown> | unde
   return ++w.count > rule.max;
 }
 
+//the admin plugin lets an admin sign in as any user, the admin page never uses it. off, an admin
+//session alone shouldn't open every account
+const IMPERSONATION = new Set(["/admin/impersonate-user", "/admin/stop-impersonating"]);
+
+const MAX_NAME = 50;
+
+//better-auth takes any string for both, a 5000 char name or a picture from any host (shown as an
+//<img> on the admin page, a tracking pixel for whoever opens it). the only picture is google's
+function checkProfile(body: Record<string, unknown> | undefined) {
+  const name = body?.name;
+  if (typeof name === "string" && (!name.trim() || name.trim().length > MAX_NAME)) {
+    throw new APIError("BAD_REQUEST", {
+      message: `Your name must be 1 to ${MAX_NAME} characters.`,
+    });
+  }
+  const image = body?.image;
+  if (image !== undefined && image !== null && !isGooglePicture(image)) {
+    throw new APIError("BAD_REQUEST", { message: "Your picture can only come from Google." });
+  }
+}
+
 //the new email is typed by the user and goes into a mail's html
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -115,12 +137,18 @@ const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.char
 function googlePicture(idToken: string): string | null {
   try {
     const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString("utf8"));
-    const url = new URL(payload.picture);
-    return url.protocol === "https:" && url.hostname.endsWith(".googleusercontent.com")
-      ? url.toString()
-      : null;
+    return isGooglePicture(payload.picture) ? new URL(payload.picture).toString() : null;
   } catch {
     return null;
+  }
+}
+
+function isGooglePicture(value: unknown) {
+  try {
+    const url = new URL(String(value));
+    return url.protocol === "https:" && url.hostname.endsWith(".googleusercontent.com");
+  } catch {
+    return false;
   }
 }
 
@@ -146,6 +174,22 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     minPasswordLength: 12,
+    //forgot password: a link to the account email, valid 1h (the default), then every device is
+    //signed out, whoever knew the old password included
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      mailInBackground(
+        user.email,
+        "Reset your dashboard password",
+        `<p>Someone asked to reset the password of your dashboard account.</p>` +
+          `<p>If it was you, <a href="${url}">click here to choose a new one</a>. The link works for ` +
+          `1 hour.</p><p>If it wasn't you, ignore this mail, your password stays the same.</p>`,
+      );
+    },
+    //the link was opened from the account's inbox, that proves the email like the confirmation does
+    onPasswordReset: async ({ user }) => {
+      await db.user.update({ where: { id: user.id }, data: { emailVerified: true } });
+    },
   },
   emailVerification: {
     sendOnSignUp: true,
@@ -249,6 +293,8 @@ export const auth = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ADMIN_ROLE_CHANGES.has(ctx.path)) await refuseSelfDemotion(ctx);
+      if (IMPERSONATION.has(ctx.path)) throw new APIError("NOT_FOUND");
+      if (ctx.path === "/update-user" || ctx.path === "/sign-up/email") checkProfile(ctx.body);
       if (await accountLimited(ctx.path, ctx.body)) {
         throw new APIError("TOO_MANY_REQUESTS", {
           message: "Too many attempts on this account. Try again in a few minutes.",
@@ -269,7 +315,13 @@ export const auth = betterAuth({
           throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
         }
       }
-      //same rules for a new password, w/ the username and email of the signed in user
+      //a reset has no session, the token says whose account it is. the common password list still
+      //applies
+      if (ctx.path === "/reset-password") {
+        const newPassword = ctx.body?.newPassword as string | undefined;
+        const reason = newPassword && weakPasswordReason(newPassword, {});
+        if (reason) throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
+      }
       //better-auth answers "ok" and sends nothing when the new email already has an account, so the
       //form can't be used to find out who has 1. the owner of this account still gets told why
       //nothing came, in their own inbox
@@ -293,6 +345,7 @@ export const auth = betterAuth({
           }
         }
       }
+      //same rules for a new password, w/ the username and email of the signed in user
       if (ctx.path === "/change-password") {
         const session = await getSessionFromCtx(ctx);
         const newPassword = ctx.body?.newPassword as string | undefined;
@@ -327,6 +380,10 @@ export const auth = betterAuth({
         max: 5,
       },
       "/send-verification-email": {
+        window: 60,
+        max: 3,
+      },
+      "/request-password-reset": {
         window: 60,
         max: 3,
       },
