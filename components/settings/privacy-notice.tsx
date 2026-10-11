@@ -2,19 +2,24 @@
  * page a visitor can read before registering. kept in plain words, and in sync w/
  * what the app actually stores and sends */
 
+import Link from "next/link";
+
 const UPDATED = "October 11, 2026";
 
-// every cookie the app sets, kept in sync w/ server/location.ts and server/api/routes/games.ts
+// every cookie the app sets, kept in sync w/ server/api/routes/games.ts and lib/auth.ts
 const COOKIES = [
-  ["dash_location", "The city you picked, when you're not signed in", "1 year"],
-  ["dash_location_consent", "Your answer to “guess my city from my connection?”", "1 year"],
   [
     "dash_game_wordle, dash_game_flags, dash_game_bee",
     "Your progress in today's puzzles",
     "1 year",
   ],
   ["dash_game_2048", "Your best 2048 score", "1 year"],
-  ["Session cookie", "Keeps you signed in, once you have an account", "Until you sign out"],
+  // better-auth's defaults: 7 days, pushed back at most once a day while the app is used
+  [
+    "Session cookie",
+    "Keeps you signed in, once you have an account",
+    "7 days after your last visit, or until you sign out",
+  ],
 ];
 
 // fetched by our server: they see our server, never you
@@ -47,6 +52,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </section>
   );
 }
+
+// the notice is also the public /privacy page, so it points to settings instead of "above"
+const SettingsLink = ({ hash, children }: { hash?: string; children: React.ReactNode }) => (
+  <Link
+    href={hash ? `/settings#${hash}` : "/settings"}
+    className="text-foreground underline underline-offset-4"
+  >
+    {children}
+  </Link>
+);
 
 const List = ({ items }: { items: string[][] }) => (
   <ul className="list-disc space-y-1 pl-5">
@@ -86,6 +101,15 @@ export function PrivacyNotice() {
             username. Your password is stored as a hash, never in plain text.
           </li>
           <li>
+            <span className="text-foreground font-medium">Your profile picture</span>: the one from
+            your Google account, saved when you sign in with Google or connect it, if you had none.
+          </li>
+          <li>
+            <span className="text-foreground font-medium">Your sign in sessions</span>: for each
+            device you&apos;re signed in on, its IP address and browser (user agent), kept until the
+            session expires or you log out.
+          </li>
+          <li>
             <span className="text-foreground font-medium">Your settings</span>: your city, your
             location answer, the text size and the theme.
           </li>
@@ -98,7 +122,16 @@ export function PrivacyNotice() {
             access token GitHub gives us, encrypted. It can only read your notifications and public
             data, and disconnecting GitHub on the Services page deletes it.
           </li>
+          <li>
+            <span className="text-foreground font-medium">Your own API keys</span>, if you save any:
+            encrypted (AES-256-GCM), only their last 4 characters are ever shown back, and you can
+            remove them at any time.
+          </li>
         </ul>
+        <p>
+          Our emails (confirming your address, changing it, deleting your account) are sent by
+          SendGrid, which receives your email address to deliver them.
+        </p>
         <p>Your game progress stays in cookies in your browser, never on our side.</p>
       </Section>
 
@@ -106,8 +139,8 @@ export function PrivacyNotice() {
         <p>
           Your location is only used to show the weather, the public holidays and the news for where
           you are. We guess your city from your connection only if you say yes, and you can change
-          that answer at any time in Settings & privacy. Until then, the dashboard uses Madrid, or
-          the city you pick yourself.
+          that answer at any time in <SettingsLink>Settings & privacy</SettingsLink>. Until then,
+          the dashboard uses Madrid, or the city you pick yourself.
         </p>
         <p>
           “Use my current location” asks your browser for your position once, saves it as your city,
@@ -147,7 +180,7 @@ export function PrivacyNotice() {
         <List items={SERVER_SIDE} />
         <p>A few things load straight in your browser, so their providers see your IP address:</p>
         <List items={BROWSER_SIDE} />
-        <p>The app runs on Vercel and the database on Neon.</p>
+        <p>The app runs on Vercel, the database on Neon, and our emails go through SendGrid.</p>
       </Section>
 
       <Section title="How long">
@@ -161,13 +194,24 @@ export function PrivacyNotice() {
         <p>Under the GDPR you can at any time:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>see and change your settings and widgets</li>
-          <li>change your name, username and email, in Profile above</li>
           <li>
-            remove a saved API key or a connected account, in Keys and connected accounts above
+            change your name, username and email, in{" "}
+            <SettingsLink hash="profile">Settings → Profile</SettingsLink>
           </li>
-          <li>withdraw your location answer in Settings</li>
-          <li>download your data, from the button above</li>
-          <li>delete your account, which deletes everything linked to it</li>
+          <li>
+            remove a saved API key or a connected account, in{" "}
+            <SettingsLink hash="connections">Settings → Keys and connected accounts</SettingsLink>
+          </li>
+          <li>
+            withdraw your location answer in <SettingsLink>Settings</SettingsLink>
+          </li>
+          <li>
+            download your data, with “Download my data” in <SettingsLink>Settings</SettingsLink>
+          </li>
+          <li>
+            delete your account in <SettingsLink>Settings</SettingsLink>, which deletes everything
+            linked to it
+          </li>
         </ul>
       </Section>
     </article>
