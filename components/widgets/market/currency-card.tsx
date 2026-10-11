@@ -3,7 +3,7 @@
 /** the rates are fetched once per base currency, the amount is multiplied heree */
 
 import { ArrowRightLeft, Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100, o
   const [base, setBase] = useState(from);
   const [targets, setTargets] = useState(to.split(","));
   const [value, setValue] = useState(String(amount));
+  // 2 converters on the dashboard each need their own
+  const errorId = useId();
 
   const { data, error, loading, refresh } = useWidgetData<CurrencyPayload>(
     "currencies",
@@ -43,7 +45,9 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100, o
   );
 
   const typed = Number(value.replace(",", "."));
-  const qty = Number.isFinite(typed) && typed >= 0 ? typed : 0;
+  // empty, 0, negative or not a number: said under the field instead of quietly showing 0
+  const valid = value.trim() !== "" && Number.isFinite(typed) && typed > 0;
+  const qty = valid ? typed : 0;
   const addable = data?.currencies.filter((c) => c !== base && !targets.includes(c)) ?? [];
 
   // the 1st target becomes the base and the old base takes its place in the list
@@ -85,9 +89,11 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100, o
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              // saved once typing is done, the param is a whole number
-              onBlur={() => onChange?.({ amount: Math.round(qty) })}
+              // saved once typing is done, the param is a whole number of at least 1
+              onBlur={() => valid && onChange?.({ amount: Math.max(1, Math.round(qty)) })}
               aria-label="Amount"
+              aria-invalid={!valid}
+              aria-describedby={valid ? undefined : errorId}
               className="tabular-nums"
             />
             <Select
@@ -112,6 +118,12 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100, o
               <ArrowRightLeft />
             </Button>
           </div>
+
+          {!valid && (
+            <p id={errorId} role="alert" className="text-destructive text-xs">
+              Enter an amount above 0.
+            </p>
+          )}
 
           <ul className="divide-y" aria-live="polite">
             {data.rates.map((r) => (
