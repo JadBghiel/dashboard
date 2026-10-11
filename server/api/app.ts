@@ -83,7 +83,10 @@ import { bodyLimit } from "hono/body-limit";
 import { rateLimit } from "@/server/rate-limit";
 import { widgetData, widgetDataRoute } from "./routes/widgets";
 
+import type { Context, Next } from "hono";
+
 import { auth } from "@/lib/auth";
+import { currentUserId } from "@/server/auth/current-user";
 
 // basePath bc the next catch all hands us the full url, /api included
 const app = new OpenAPIHono({
@@ -121,6 +124,14 @@ const limitBody = bodyLimit({
 app.use("*", (c, next) =>
   ["POST", "PUT", "PATCH"].includes(c.req.method) ? limitBody(c, next) : next(),
 );
+// log in first (the subject): the widget data and what the cards call themselves are for signed in
+// users only, like the pages. /about.json, the service catalog, the location and auth stay open
+const signedIn = async (c: Context, next: Next) => {
+  if (await currentUserId(c.req.raw.headers)) return next();
+  return c.json<ApiError>({ code: "unauthorized", message: "Log in to use the widgets." }, 401);
+};
+for (const path of ["/widgets/*", "/market/*", "/tools/*", "/games/*"]) app.use(path, signedIn);
+
 app.use("/widgets/*", rateLimit("widget", 150, 60));
 app.use("/tools/translate", rateLimit("translation", 30, 60));
 app.use("/location/search", rateLimit("city search", 60, 60));
