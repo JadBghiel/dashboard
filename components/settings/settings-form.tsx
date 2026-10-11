@@ -42,7 +42,7 @@ export function SettingsForm({
   theme: Theme;
 }) {
   const router = useRouter();
-  const { setTheme } = useTheme();
+  const { theme: current, setTheme } = useTheme();
   const [consent, setConsent] = useState(savedConsent);
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -63,7 +63,9 @@ export function SettingsForm({
     router.refresh();
   }
   const [textSize, setTextSize] = useState(savedSize);
-  const [theme, setThemeState] = useState(savedTheme);
+  // next-themes' value and not a copy in state, the header toggle changes it too. the saved 1 until
+  // hydrated, next-themes only knows it in the browser
+  const theme = (hydrated && current ? current : savedTheme) as Theme;
   const [status, setStatus] = useState<string | null>(null);
 
   async function save(patch: { textSize?: TextSize; theme?: Theme }, undo: () => void) {
@@ -86,12 +88,8 @@ export function SettingsForm({
 
   function pickTheme(next: Theme) {
     const before = theme;
-    const apply = (t: Theme) => {
-      setThemeState(t);
-      setTheme(t);
-    };
-    apply(next);
-    save({ theme: next }, () => apply(before));
+    setTheme(next);
+    save({ theme: next }, () => setTheme(before));
   }
 
   return (
