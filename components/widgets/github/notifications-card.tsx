@@ -32,7 +32,7 @@ export function NotificationsCard({
   return (
     <WidgetCard
       icon={<GitHubMark className="size-5" />}
-      title="GitHub"
+      title="Notifications"
       subtitle={data ? `@${data.login} · ${data.items.length} unread` : undefined}
       loading={loading}
       error={locked ? null : error}
