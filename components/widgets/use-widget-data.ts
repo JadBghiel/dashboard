@@ -10,7 +10,8 @@ import { api } from "@/lib/api";
 import { useInstance } from "./instance-context";
 import { useTimer } from "./timer-provider";
 
-type Result = { data: unknown } | { error: string };
+// locked = the service needs a key or a linked account first (403 not_subscribed)
+type Result = { data: unknown } | { error: string; locked: boolean };
 
 async function fetchWidget(
   service: string,
@@ -24,15 +25,16 @@ async function fetchWidget(
       { init: { signal } },
     );
     const body = await res.json();
-    return "data" in body ? { data: body.data } : { error: body.message };
+    if ("data" in body) return { data: body.data };
+    return { error: body.message, locked: body.code === "not_subscribed" };
   } catch {
-    return { error: "Could not reach the server." };
+    return { error: "Could not reach the server.", locked: false };
   }
 }
 
 // key says which request the data belongs to, loading isnt stored, its "the data is not for the
 // current key yet", so nothing has to be set syncsly when the params or the location change
-type Loaded<T> = { key: string | null; data: T | null; error: string | null };
+type Loaded<T> = { key: string | null; data: T | null; error: string | null; locked: boolean };
 
 export function useWidgetData<T>(
   service: string,
@@ -46,7 +48,12 @@ export function useWidgetData<T>(
   const paramsKey = JSON.stringify(params);
   const key = `${service}/${widget}/${paramsKey}/${refetchKey}`;
 
-  const [state, setState] = useState<Loaded<T>>({ key: null, data: null, error: null });
+  const [state, setState] = useState<Loaded<T>>({
+    key: null,
+    data: null,
+    error: null,
+    locked: false,
+  });
   const [refreshing, setRefreshing] = useState(false);
   const inflight = useRef<AbortController | null>(null);
 
@@ -61,8 +68,8 @@ export function useWidgetData<T>(
       // a failed refresh keeps the last good data on screen, only the error is added
       setState((s) =>
         "data" in result
-          ? { key, data: result.data as T, error: null }
-          : { key, data: s.data, error: result.error },
+          ? { key, data: result.data as T, error: null, locked: false }
+          : { key, data: s.data, error: result.error, locked: result.locked },
       );
     });
     return ctrl;
@@ -102,6 +109,7 @@ export function useWidgetData<T>(
   return {
     data: state.data,
     error: state.error,
+    locked: state.locked,
     loading: state.key !== key || refreshing,
     refresh,
   };
