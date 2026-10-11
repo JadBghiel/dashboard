@@ -144,3 +144,51 @@
     font-size: 112.5%;
   }
 }
+
+/* the widget wall behind log in and register (components/auth/widget-wall.tsx) */
+.auth-wall {
+  position: absolute;
+  inset: -30%;
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  transform: rotate(-12deg) scale(0.9);
+}
+.auth-wall-col {
+  width: 300px;
+  flex: none;
+}
+.auth-wall-track {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  animation: auth-wall-drift var(--wall-loop) linear infinite;
+}
+.auth-wall-col:nth-child(even) .auth-wall-track {
+  animation-direction: reverse;
+}
+.auth-wall-track img {
+  width: 300px;
+  border-radius: 14px;
+}
+@keyframes auth-wall-drift {
+  to {
+    transform: translateY(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-wall-track {
+    animation: none;
+  }
+}
+/* the form stays readable: the page colour in the middle, the cards fading in toward the edges */
+.auth-wall-dim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 34% 52% at 50% 50%,
+    var(--background) 0%,
+    color-mix(in oklab, var(--background) 82%, transparent) 45%,
+    color-mix(in oklab, var(--background) 55%, transparent) 100%
+  );
+}
