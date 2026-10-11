@@ -129,8 +129,8 @@ export function PrivacyNotice() {
           </li>
         </ul>
         <p>
-          Our emails (confirming your address, changing it, deleting your account) are sent by
-          SendGrid, which receives your email address to deliver them.
+          Our emails (confirming your address, changing it, resetting your password, deleting your
+          account) are sent by SendGrid, which receives your email address to deliver them.
         </p>
         <p>Your game progress stays in cookies in your browser, never on our side.</p>
       </Section>

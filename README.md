@@ -32,10 +32,12 @@ https://github.com/user-attachments/assets/1afa7ca5-6ad4-4166-beed-344738a4560a
 - **Your location, with consent:** the weather, holidays and news follow your city. A city you pick
   always wins; your connection is only used to guess it after you say yes.
 - **Your own API keys:** paste your own Finnhub key so your widgets don't share the app's free quota.
-  It is stored encrypted (AES-256-GCM) and only its last 4 characters are ever shown back.
+  Finnhub checks it before it's saved, it is stored encrypted (AES-256-GCM) and only its last 4
+  characters are ever shown back.
 - **Your account, your way:** change your name, username or email, change your password, sign out
   of every device, see your saved keys and the accounts you log in with, and remove any of them.
-  Your Google picture is used as your avatar.
+  Your Google picture is used as your avatar. Forgot your password? A link by email lets you pick a
+  new one.
 - **Protected logins:** on top of the usual per IP limit, each account allows 10 login attempts
   every 15 minutes, whatever the IP they come from.
 - **An admin page:** admins see every user, and can promote, demote, ban and unban them.
@@ -80,7 +82,8 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
 1. **Create an account** on **Register**: name, username, email and a password of 12 characters or
    more (common passwords are refused). Click the link in the confirmation email, and you are signed
    in. Next time, log in with your username or your email. **Continue with Google** appears when the
-   server has a Google client.
+   server has a Google client. **Forgot your password?** on the log in page emails you a link to
+   choose a new one, valid 1 hour, and signs you out everywhere once it's changed.
 2. **Open the dashboard.** Your widgets are grouped in three sections: Utility, News and Games.
    Everything except the privacy notice needs a confirmed account.
 3. **Set your location** with the pin in the top bar: search a city, or use your device position
@@ -223,8 +226,8 @@ each production build (`vercel.json`). The production environment needs:
 npm test
 ```
 
-Vitest runs against a separate test database (port 55434, started by `npm run setup`), with every
-outside service faked by Mock Service Worker, so the tests never touch your data or the network.
+Vitest runs against a separate test database (port 55434, started by `npm run setup`), so the tests
+never touch your data.
 
 ## Scripts
 
@@ -251,7 +254,7 @@ outside service faked by Mock Service Worker, so the tests never touch your data
 | API      | Hono with `@hono/zod-openapi`, mounted inside the Next.js app under `/api`           |
 | Data     | PostgreSQL with Prisma 7 (Neon on Vercel, a container in Docker)                     |
 | Accounts | better-auth (email and password, email confirmation, Google sign-in, GitHub linking) |
-| Tests    | Vitest and Mock Service Worker                                                       |
+| Tests    | Vitest                                                                               |
 | Hosting  | Vercel (production), Docker Compose (the graded stack, port 8080)                    |
 
 **Why these choices**
@@ -268,7 +271,7 @@ picked against an alternative:
 | **better-auth**                               | Email and password with confirmation, sessions, Google sign-in, GitHub account linking and an admin plugin, self-hosted in our own database.                                                                       | A hosted auth service: user data outside our database. Writing auth by hand: easy to get wrong. |
 | **Tailwind CSS + shadcn/ui**                  | Accessible components (Radix: keyboard, focus, screen readers) that we own and style, with light and dark themes from one set of tokens.                                                                           | A closed component kit: harder to restyle and to keep accessible.                               |
 | **Server-side calls to the outside services** | API keys and user tokens never reach the browser, one cached answer serves many users, and every answer is checked against a schema before it is sent.                                                             | Calls from the browser: keys exposed, no shared cache, and every user hits the quotas.          |
-| **Vitest + Mock Service Worker**              | Fast tests on a separate database, with every outside service faked, so tests never touch real data or real APIs.                                                                                                  | Tests against the real services: slow, flaky, and they use up quotas.                           |
+| **Vitest**                                    | Fast tests on a separate database, so tests never touch real data.                                                                                                                                                 | Jest: slower, and more setup for TypeScript and ESM.                                            |
 | **Vercel + Docker Compose**                   | Vercel for the live site (managed, builds on each push), Docker Compose for the graded stack that the subject requires, on port 8080.                                                                              | One of the two only: no live demo, or no standard build.                                        |
 
 **How it works**
