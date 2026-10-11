@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, username } from "better-auth/plugins";
 import { APIError } from "better-auth/api";
-import { createAuthMiddleware } from "better-auth/api";
+import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { db } from "@/server/db";
 import { sendMail } from "./email";
 import { weakPasswordReason } from "./common-passwords";
@@ -53,6 +53,89 @@ function mailInBackground(to: string, subject: string, html: string) {
   }
 }
 
+//admin plugin endpoints that can take the admin role away from someone. the admin page hides the
+//buttons on your own row, but only in the browser: anyone w/ an admin session can call these directly
+const ADMIN_ROLE_CHANGES = new Set(["/admin/set-role", "/admin/update-user"]);
+
+//an admin can't demote themselves. banning or removing yourself is already refused by the plugin.
+//so every admin action targets another admin, and the app can never end up w/o one
+async function refuseSelfDemotion(ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]) {
+  const role =
+    ctx.path === "/admin/set-role"
+      ? (ctx.body?.role as string | undefined)
+      : (ctx.body?.data as { role?: string } | undefined)?.role;
+  if (role === undefined || role === "admin") return;
+  //no session = not an admin, the plugin itself answers that
+  const session = await getSessionFromCtx(ctx);
+  if (session && ctx.body?.userId === session.user.id) {
+    throw new APIError("FORBIDDEN", { message: "You can't remove your own admin role." });
+  }
+}
+
+//the rateLimit rules at the bottom count per ip, so a botnet still gets 5 guesses a minute from each
+//of its addresses on 1 account. these count per account, whatever the ip. the identifier the request
+//names, a username counted as its account's email so both forms share 1 count. an unknown 1 is
+//limited the same, nothing leaks. in memory like better-auth's own, each server copy counts on its own
+const ACCOUNT_LIMITS: Record<
+  string,
+  { field: string; bucket: string; max: number; window: number }
+> = {
+  "/sign-in/email": { field: "email", bucket: "sign-in", max: 10, window: 15 * 60 },
+  "/sign-in/username": { field: "username", bucket: "sign-in", max: 10, window: 15 * 60 },
+  //each 1 sends a mail, the inbox shouldn't get flooded from many ips either
+  "/send-verification-email": { field: "email", bucket: "verify", max: 5, window: 15 * 60 },
+};
+const accountWindows = new Map<string, { count: number; resetAt: number }>();
+
+async function accountLimited(path: string, body: Record<string, unknown> | undefined) {
+  const rule = ACCOUNT_LIMITS[path];
+  const value = body?.[rule?.field ?? ""];
+  if (!rule || typeof value !== "string") return false;
+  let id = value.trim().toLowerCase();
+  if (rule.field === "username") {
+    const user = await db.user.findUnique({ where: { username: id }, select: { email: true } });
+    if (user) id = user.email;
+  }
+  const key = `${rule.bucket}:${id}`;
+  const now = Date.now();
+  let w = accountWindows.get(key);
+  if (!w || w.resetAt <= now) {
+    if (accountWindows.size >= 10_000) accountWindows.clear();
+    w = { count: 0, resetAt: now + rule.window * 1000 };
+    accountWindows.set(key, w);
+  }
+  return ++w.count > rule.max;
+}
+
+//the new email is typed by the user and goes into a mail's html
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+/** the "picture" claim of google's id token, only if it's an https url on google's own image host. the
+ * token came straight from google in the oauth exchange, the server never got it from the browser */
+function googlePicture(idToken: string): string | null {
+  try {
+    const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString("utf8"));
+    const url = new URL(payload.picture);
+    return url.protocol === "https:" && url.hostname.endsWith(".googleusercontent.com")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+//never replaces a picture the user already has, only fills an empty one
+async function fillPictureFromGoogle(account: {
+  providerId?: string;
+  userId?: string;
+  idToken?: string | null;
+}) {
+  if (account.providerId !== "google" || !account.userId || !account.idToken) return;
+  const image = googlePicture(account.idToken);
+  if (!image) return;
+  await db.user.updateMany({ where: { id: account.userId, image: null }, data: { image } });
+}
+
 export const auth = betterAuth({
   baseURL: appUrl,
   trustedOrigins: appOrigins,
@@ -73,13 +156,28 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       mailInBackground(
         user.email,
-        "Confirm your dashboard account",
-        `<p>Click to confirm: <a href="${url}">click here</a></p>`,
+        //also the 2nd step of an email change, sent to the new address, so worded for both
+        "Confirm your email address",
+        `<p>Click to confirm this email address for your dashboard account: <a href="${url}">click here</a></p>`,
       );
     },
   },
   plugins: [username(), admin()],
   user: {
+    //#47 edit profile: a new email takes 2 clicks. the current address approves first, so a stolen
+    //session alone can't move the account to another inbox, then the new address proves it's real
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        mailInBackground(
+          user.email,
+          "Approve your new dashboard email",
+          `<p>Someone asked to change your dashboard account's email to ${escapeHtml(newEmail)}.</p>` +
+            `<p>If it was you, <a href="${url}">click here to approve it</a>. We'll then send a link to ` +
+            `the new address to finish.</p><p>If it wasn't you, ignore this mail and change your password.</p>`,
+        );
+      },
+    },
     deleteUser: {
       enabled: true,
       //deleting needs a click on a link sent to the account email. works the same for password and
@@ -109,10 +207,15 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    //google's profile picture for accounts that had none: a google sign up already gets it, these
+    //cover a password account that links google later, on the link and on each google login after
     account: {
+      update: { after: async (account) => fillPictureFromGoogle(account) },
       create: {
         after: async (account) => {
-          if (account.providerId === "credential") return;
+          await fillPictureFromGoogle(account);
+          //github is linked on purpose from the services page, only google proves the email
+          if (account.providerId !== "google") return;
           const user = await db.user.findUnique({
             where: { id: account.userId },
             select: { emailVerified: true },
@@ -145,6 +248,12 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ADMIN_ROLE_CHANGES.has(ctx.path)) await refuseSelfDemotion(ctx);
+      if (await accountLimited(ctx.path, ctx.body)) {
+        throw new APIError("TOO_MANY_REQUESTS", {
+          message: "Too many attempts on this account. Try again in a few minutes.",
+        });
+      }
       //we check if the password they used to register is too easy to guess
       if (ctx.path === "/sign-up/email") {
         //we can't put it in the databaseHooks cuz they only see the password hash
@@ -160,6 +269,45 @@ export const auth = betterAuth({
           throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
         }
       }
+      //same rules for a new password, w/ the username and email of the signed in user
+      //better-auth answers "ok" and sends nothing when the new email already has an account, so the
+      //form can't be used to find out who has 1. the owner of this account still gets told why
+      //nothing came, in their own inbox
+      if (ctx.path === "/change-email") {
+        const session = await getSessionFromCtx(ctx);
+        const newEmail = (ctx.body?.newEmail as string | undefined)?.trim().toLowerCase();
+        if (session && newEmail && newEmail !== session.user.email) {
+          const taken = await db.user.findFirst({
+            where: { email: { equals: newEmail, mode: "insensitive" } },
+            select: { id: true },
+          });
+          if (taken) {
+            mailInBackground(
+              session.user.email,
+              "Your dashboard email wasn't changed",
+              `<p>You asked to change your dashboard account's email to ${escapeHtml(newEmail)}, but ` +
+                `that address already has an account, so nothing was changed.</p>` +
+                `<p>To use it here, delete the other account first or pick another address. If it ` +
+                `wasn't you, change your password.</p>`,
+            );
+          }
+        }
+      }
+      if (ctx.path === "/change-password") {
+        const session = await getSessionFromCtx(ctx);
+        const newPassword = ctx.body?.newPassword as string | undefined;
+        const reason =
+          session &&
+          newPassword &&
+          weakPasswordReason(newPassword, {
+            username: session.user.username ?? undefined,
+            email: session.user.email,
+          });
+        if (reason) throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
+        //the other devices are signed out whatever the request asks: the security card sends true,
+        //but a direct call w/ false would leave a thief who knew the old password signed in
+        return { context: { body: { ...ctx.body, revokeOtherSessions: true } } };
+      }
     }),
   },
   rateLimit: {
@@ -173,12 +321,21 @@ export const auth = betterAuth({
         window: 60,
         max: 5,
       },
+      //it checks the current password, so it's a login attempt too
+      "/change-password": {
+        window: 60,
+        max: 5,
+      },
       "/send-verification-email": {
         window: 60,
         max: 3,
       },
       //each call sends a mail
       "/delete-user": {
+        window: 60,
+        max: 3,
+      },
+      "/change-email": {
         window: 60,
         max: 3,
       },

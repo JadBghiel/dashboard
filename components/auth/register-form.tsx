@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { GoogleButton } from "./google-button";
 
@@ -43,6 +44,15 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
         <p className="text-muted-foreground text-sm">
           We sent a confirmation link to {email}. Click it to activate your account.
         </p>
+        {/* #47: what happens to their data, said right after they gave it */}
+        <p className="text-muted-foreground border-t pt-3 text-xs">
+          We only keep your account, your settings and your widgets, never sell or share them, and
+          you can download or delete everything from Settings at any time.{" "}
+          <Link href="/settings#privacy" className="underline underline-offset-4">
+            Read what we store and why
+          </Link>
+          .
+        </p>
       </div>
     );
   }
@@ -53,17 +63,20 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
         <h1 className="text-xl font-semibold">Register</h1>
 
         <div className="space-y-1">
-          <label htmlFor="name" className="text-sm font-medium">
-            Name
-          </label>
-          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Label htmlFor="name">Name</Label>
+          <Input
+            id="name"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
         <div className="space-y-1">
-          <label htmlFor="username" className="text-sm font-medium">
-            Username
-          </label>
+          <Label htmlFor="username">Username</Label>
           <Input
             id="username"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
@@ -72,24 +85,22 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
+          <Label htmlFor="password">Password</Label>
           <Input
             id="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

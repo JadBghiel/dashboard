@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { authClient, useSession } from "@/lib/auth-client";
 
 export function DeleteAccountCard() {
@@ -62,9 +63,9 @@ export function DeleteAccountCard() {
         </Button>
       ) : (
         <div className="space-y-2">
-          <label htmlFor="delete-email" className="text-sm font-medium">
+          <Label htmlFor="delete-email">
             Type your email <span className="font-mono">{accountEmail}</span> to confirm
-          </label>
+          </Label>
           <Input
             id="delete-email"
             type="email"

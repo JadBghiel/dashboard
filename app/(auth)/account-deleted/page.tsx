@@ -11,8 +11,8 @@ export default function AccountDeletedPage() {
       <p className="text-muted-foreground text-sm">
         Your account and all its data are gone. Thanks for trying the dashboard.
       </p>
-      <Link href="/dashboard" className="text-sm underline">
-        Back to the dashboard
+      <Link href="/register" className="text-sm underline">
+        Create a new account
       </Link>
     </div>
   );

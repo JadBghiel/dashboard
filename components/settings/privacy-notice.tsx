@@ -161,6 +161,10 @@ export function PrivacyNotice() {
         <p>Under the GDPR you can at any time:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>see and change your settings and widgets</li>
+          <li>change your name, username and email, in Profile above</li>
+          <li>
+            remove a saved API key or a connected account, in Keys and connected accounts above
+          </li>
           <li>withdraw your location answer in Settings</li>
           <li>download your data, from the button above</li>
           <li>delete your account, which deletes everything linked to it</li>

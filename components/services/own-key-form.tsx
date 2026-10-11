@@ -75,7 +75,8 @@ export function OwnKeyForm({
         {appKey
           ? "Optional. With your own key your widgets don't share the app's free quota."
           : "Required: this server has no key of its own for this service."}{" "}
-        It is stored encrypted and only its last 4 characters are ever shown back.
+        It is stored encrypted, only its last 4 characters are ever shown back, and you can remove
+        it at any time, here or in Settings.
       </p>
 
       {hint && (

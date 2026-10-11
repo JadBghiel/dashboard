@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { GoogleButton } from "./google-button";
 
@@ -53,9 +54,7 @@ export function LogInForm({
       <form onSubmit={handleSubmit} className="space-y-4">
         <h1 className="text-xl font-semibold">Log in</h1>
         <div className="space-y-1">
-          <label htmlFor="login" className="text-sm font-medium">
-            Username or email
-          </label>
+          <Label htmlFor="login">Username or email</Label>
           <Input
             id="login"
             autoComplete="username"
@@ -65,9 +64,7 @@ export function LogInForm({
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
+          <Label htmlFor="password">Password</Label>
           <Input
             id="password"
             type="password"
