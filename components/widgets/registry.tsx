@@ -168,8 +168,9 @@ export const CARDS: Record<string, CardDef> = {
   "news/headlines": {
     section: "news",
     className: "lg:col-span-5",
-    // topics and keywords are chip lists, the news settings section renders them
-    notInSettings: ["topics", "keywords"],
+    // the news settings section renders these: topics and keywords as chips, country and language
+    // from short lists
+    notInSettings: ["topics", "keywords", "country", "language"],
     ExtraSettings: NewsSettings,
     render: (p, { locationKey }) => (
       <NewsCard
