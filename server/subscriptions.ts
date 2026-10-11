@@ -5,24 +5,28 @@
  * - auth none: open to everyone, weather or the games
  * - api_key: the user's own key, else the app key when the server has one, else locked until the
  *   user saves a key on the services page
- * - oauth: locked until the user links that account */
+ * - oauth: locked until the user links that account, then the widgets run on its token */
 
 import { keyFor } from "@/server/credential-store";
+import { oauthToken } from "@/server/linked-accounts";
 import type { ServiceDef, WidgetCredentials } from "@/server/registry/define";
 
-/** ready = works w/o anything from the user, own_key = runs on the user's key, the 2 others = locked */
-export type ServiceStatus = "ready" | "own_key" | "missing_key" | "needs_account";
+/** ready = works w/o anything from the user, own_key = runs on the user's key, linked = runs on the
+ * user's linked account, the 2 others = locked */
+export type ServiceStatus = "ready" | "own_key" | "linked" | "missing_key" | "needs_account";
 
-export const isUnlocked = (status: ServiceStatus) => status === "ready" || status === "own_key";
+export const isUnlocked = (status: ServiceStatus) =>
+  status === "ready" || status === "own_key" || status === "linked";
 
 const hasAppKey = (service: ServiceDef) => !!service.key && !!process.env[service.key.env];
 
 /** the status from what is already known, for lists: the services page and GET /api/services only
- * read the key hints, they never decrypt every key just to draw a badge */
-export function serviceStatus(service: ServiceDef, hasOwnKey: boolean): ServiceStatus {
+ * read the key hints and the linked providers, they never decrypt a key or a token to draw a badge.
+ * subscribed = the user saved their own key (api_key) or linked the account (oauth) */
+export function serviceStatus(service: ServiceDef, subscribed: boolean): ServiceStatus {
   if (service.auth === "none") return "ready";
-  if (service.auth === "oauth") return "needs_account";
-  if (hasOwnKey) return "own_key";
+  if (service.auth === "oauth") return subscribed ? "linked" : "needs_account";
+  if (subscribed) return "own_key";
   return hasAppKey(service) ? "ready" : "missing_key";
 }
 
@@ -49,5 +53,8 @@ export async function requireSubscription(
     );
   }
 
-  throw new NotSubscribedError(`Link your ${service.name} account on the Services page first.`);
+  // the service id is the better-auth provider id
+  const accessToken = userId ? await oauthToken(userId, service.id) : null;
+  if (accessToken) return { kind: "oauth", accessToken };
+  throw new NotSubscribedError(`Connect your ${service.name} account to use this widget.`);
 }

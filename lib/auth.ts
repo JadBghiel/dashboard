@@ -23,6 +23,12 @@ export const googleEnabled = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
 );
 
+// github is linked from the services page for its widgets, never a way to sign in or sign up. w/o
+// the 2 values the connect btn says github isnt set up on this server
+export const githubEnabled = Boolean(
+  process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
+);
+
 //sent after the response: awaiting the mail would make the response slower for real accounts, and
 //that timing difference leaks which emails exist. after() and not a bare promise bc on vercel the
 //function can be frozen once the response is out, a mail still in flight would never leave. outside
@@ -90,12 +96,16 @@ export const auth = betterAuth({
     },
   },
   account: {
+    //the github token reads the user's notifications, sealed in the db like the api keys are
+    encryptOAuthTokens: true,
     accountLinking: {
       //google signing in w/ the email of an account that was never confirmed: google just proved
       //the email is theirs, so the account is linked instead of refused. the hijack this default
       //protects against (someone pre-registering your email w/ their password) is closed by the
       //account hook below, which drops that password on the link
       requireLocalEmailVerified: false,
+      //github is linked by a signed in user on purpose, their github email can be another one
+      allowDifferentEmails: true,
     },
   },
   databaseHooks: {
@@ -174,12 +184,22 @@ export const auth = betterAuth({
       },
     },
   },
-  socialProviders: googleEnabled
-    ? {
-        google: {
-          clientId: process.env.GOOGLE_CLIENT_ID!,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        },
-      }
-    : {},
+  socialProviders: {
+    ...(googleEnabled && {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      },
+    }),
+    ...(githubEnabled && {
+      github: {
+        clientId: process.env.GITHUB_CLIENT_ID!,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        //on top of the defaults (read:user, user:email). public data only, no repo scope
+        scope: ["notifications"],
+        //linking only: a github sign in can't create an account
+        disableSignUp: true,
+      },
+    }),
+  },
 });
