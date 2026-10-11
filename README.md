@@ -33,6 +33,12 @@ https://github.com/user-attachments/assets/1afa7ca5-6ad4-4166-beed-344738a4560a
   always wins; your connection is only used to guess it after you say yes.
 - **Your own API keys:** paste your own Finnhub key so your widgets don't share the app's free quota.
   It is stored encrypted (AES-256-GCM) and only its last 4 characters are ever shown back.
+- **Your account, your way:** change your name, username or email, change your password, sign out
+  of every device, see your saved keys and the accounts you log in with, and remove any of them.
+  Your Google picture is used as your avatar.
+- **Protected logins:** on top of the usual per IP limit, each account allows 10 login attempts
+  every 15 minutes, whatever the IP they come from.
+- **An admin page:** admins see every user, and can promote, demote, ban and unban them.
 - **Privacy built in:** a privacy notice, every cookie explained, and "Download my data" in Settings.
 - **Fast and resilient:** answers are cached and shared between users; when a service is down you
   get its last good answer instead of an error.
@@ -87,10 +93,33 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
 6. **Arrange the page** with **Edit layout**: drag a card, or tab to it and use Space and the arrows.
    The cross removes a card; **Undo** puts it back for a few seconds.
 7. **Settings & privacy** (sidebar): location, text size, theme, download your data, delete your
-   account (confirmed by an email link), and the privacy notice.
+   account (confirmed by an email link), and the privacy notice. Also:
+   - **Profile:** your name and username are saved right away. Your picture comes from Google, when
+     you sign in with it or connect it. A new email takes 2 clicks: a link to your current address
+     approves the change, then a link to the new address confirms it.
+   - **Keys and connected accounts:** your saved API keys (last 4 characters only), how you log in
+     (password, Google) and GitHub if linked. Remove a key, unlink an account or connect Google; your
+     last way to log in can't be removed.
+   - **Security:** change your password, which signs out your other devices, or **Sign out
+     everywhere**, this device included.
 8. **Services** (sidebar): what each service needs, and the form for your own API key.
+9. **Admin** (sidebar, admins only): every user with their badges (admin, unverified, banned) and
+   number of subscriptions, a search, and **Promote** / **Demote**, **Ban** (with a reason) and
+   **Unban**. A banned user is signed out and can't log in. An admin can't demote or ban themselves.
+10. **Log out** from your name at the bottom of the sidebar.
 
-9. **Log out** from your name at the bottom of the sidebar.
+### Admin
+
+There is no hardcoded admin: the first one is set by hand in the database, then they promote others
+from `/admin`. Set `role` to `admin` on their user row:
+
+- **Live site:** in the Neon SQL editor, run
+  `UPDATE "user" SET role = 'admin' WHERE email = 'you@example.com';`
+- **Docker:**
+  `docker compose exec db psql -U dashboard -d dashboard -c "UPDATE \"user\" SET role = 'admin' WHERE email = 'you@example.com';"`
+
+Then log out and back in. The **Admin** link appears in the sidebar, and the **Promote** button on
+`/admin` makes the next admins. In development, the seeded `admin` account already is one.
 
 ## Screenshots
 
