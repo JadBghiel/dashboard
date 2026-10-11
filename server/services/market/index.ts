@@ -1,5 +1,7 @@
-/** stock market on finnhub: search, live quotes and a hearted watchlist. no account needed, the
- * app holds 1 key server side */
+/** the market, as 2 services so a missing key only locks what needs it:
+ * - market: stocks on finnhub, search, live quotes and a hearted watchlist. the app's key, or the
+ *   user's own one saved on the services page
+ * - currencies: crypto on coingecko and exchange rates on frankfurter, both keyless, always open */
 
 import { defineService } from "@/server/registry/define";
 
@@ -10,10 +12,18 @@ import { watchlistWidget } from "./widgets/watchlist";
 export const market = defineService({
   id: "market",
   name: "Stock market",
-  description: "Stocks, crypto and currencies",
+  description: "US stocks, live prices and a watchlist",
   category: "utility",
-  // 1 app wide key today, a user's own key once accounts and the credential store (#17) land
   auth: "api_key",
   key: { label: "Finnhub API key", helpUrl: "https://finnhub.io/register", env: "FINNHUB_API_KEY" },
-  widgets: [watchlistWidget, cryptoWidget, currencyWidget],
+  widgets: [watchlistWidget],
+});
+
+export const currencies = defineService({
+  id: "currencies",
+  name: "Currencies",
+  description: "Crypto prices and exchange rates",
+  category: "utility",
+  auth: "none",
+  widgets: [cryptoWidget, currencyWidget],
 });

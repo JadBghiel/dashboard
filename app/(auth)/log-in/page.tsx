@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { LogInForm } from "@/components/auth/log-in-form";
 import { googleEnabled } from "@/lib/auth";
+import { currentUserId } from "@/server/auth/current-user";
 
 export const metadata: Metadata = { title: "Log in" };
 
@@ -16,6 +19,8 @@ export default async function LogInPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  // already signed in, nothing to log in to
+  if (await currentUserId(await headers())) redirect("/dashboard");
   const { error } = await searchParams;
   const oauthError = error
     ? (OAUTH_ERRORS[error] ?? "Google sign in didn't work, try again or use your password.")

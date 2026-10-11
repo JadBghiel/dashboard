@@ -1,5 +1,8 @@
 /** who is making the request, the 1 place the api asks it */
 
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { auth } from "@/lib/auth";
 import { db } from "@/server/db";
 
@@ -19,6 +22,14 @@ export function currentUserId(headers: Headers): Promise<string | null> {
 async function lookup(headers: Headers): Promise<string | null> {
   const session = await auth.api.getSession({ headers });
   return session?.user.id ?? null;
+}
+
+/** the signed in user of a page, a visitor goes to the log in page: the app is for registered,
+ * confirmed users only (only the privacy notice and the auth pages are public) */
+export async function requireUserId(): Promise<string> {
+  const userId = await currentUserId(await headers());
+  if (!userId) redirect("/log-in");
+  return userId;
 }
 
 /** true only for a signed in user whose role is admin (the better-auth admin plugin's field) */

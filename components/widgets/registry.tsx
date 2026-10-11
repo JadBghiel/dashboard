@@ -8,6 +8,8 @@ import { BeeCard } from "./games/bee-card";
 import { FlagCard } from "./games/flag-card";
 import { Game2048Card } from "./games/game-2048-card";
 import { WordleCard } from "./games/wordle-card";
+import { NotificationsCard } from "./github/notifications-card";
+import { ReposCard } from "./github/repos-card";
 import { CryptoCard } from "./market/crypto-card";
 import { CurrencyCard } from "./market/currency-card";
 import { StockCard } from "./market/stock-card";
@@ -83,7 +85,7 @@ export const CARDS: Record<string, CardDef> = {
       />
     ),
   },
-  "market/crypto_prices": {
+  "currencies/crypto_prices": {
     section: "utility",
     notInSettings: ["coins"],
     render: (p, { onChange }) => (
@@ -94,11 +96,23 @@ export const CARDS: Record<string, CardDef> = {
       />
     ),
   },
-  "market/currency_converter": {
+  "currencies/currency_converter": {
     section: "utility",
     notInSettings: ["from", "to", "amount"],
     render: (p, { onChange }) => (
       <CurrencyCard from={str(p.from)} to={str(p.to)} amount={num(p.amount)} onChange={onChange} />
+    ),
+  },
+  "github/notifications": {
+    section: "utility",
+    render: (p) => (
+      <NotificationsCard count={num(p.count)} onlyParticipating={bool(p.only_participating)} />
+    ),
+  },
+  "github/repositories": {
+    section: "utility",
+    render: (p) => (
+      <ReposCard count={num(p.count)} sort={p.sort as "pushed" | "created" | "full_name"} />
     ),
   },
   "tools/public_holidays": {

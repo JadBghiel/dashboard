@@ -42,5 +42,7 @@ describe("serviceStatus", () => {
 
   it("locks an oauth service until the account is linked", () => {
     expect(isUnlocked(serviceStatus(service("oauth"), false))).toBe(false);
+    expect(serviceStatus(service("oauth"), true)).toBe("linked");
+    expect(isUnlocked(serviceStatus(service("oauth"), true))).toBe(true);
   });
 });

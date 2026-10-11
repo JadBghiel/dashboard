@@ -118,6 +118,10 @@ export function RegisterForm({ googleEnabled }: { googleEnabled: boolean }) {
           <Link href="/log-in" className="underline">
             Log in
           </Link>
+          {" · "}
+          <Link href="/privacy" className="underline">
+            Privacy
+          </Link>
         </p>
       </form>
 

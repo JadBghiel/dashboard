@@ -57,13 +57,13 @@ export function Logo({
     >
       {symbol[0]}
       {src && (
-        // from finnhub's cdn, the optimizer would only proxy a 5kb logo through our server
+        // through next's optimizer, so the browser loads it from our own domain: some networks
+        // block finnhub's cdn, and the logo providers never see the user
         <Image
           src={src}
           alt=""
           width={size}
           height={size}
-          unoptimized
           onLoad={() => setLoaded(true)}
           className={cn(
             "absolute inset-0 size-full bg-white object-contain transition-opacity",

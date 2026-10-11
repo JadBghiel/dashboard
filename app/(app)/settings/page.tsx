@@ -5,6 +5,7 @@ import { PrivacyNotice } from "@/components/settings/privacy-notice";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireUserId } from "@/server/auth/current-user";
 import { locationState } from "@/server/user-location";
 import { displaySettings } from "@/server/user-settings";
 import { DeleteAccountCard } from "@/components/settings/delete-account";
@@ -12,7 +13,6 @@ import { ConnectionsCard, type SavedKey } from "@/components/settings/connection
 import { ProfileCard } from "@/components/settings/profile-card";
 import { SecurityCard } from "@/components/settings/security-card";
 import { googleEnabled } from "@/lib/auth";
-import { currentUserId } from "@/server/auth/current-user";
 import { listHints } from "@/server/credential-store";
 import { db } from "@/server/db";
 import { registry } from "@/server/registry";
@@ -46,28 +46,24 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ email?: string; error?: string }>;
 }) {
+  const userId = await requireUserId();
   const head = await headers();
   const jar = await cookies();
-  const [display, { location, consent }, userId] = await Promise.all([
+  // everything the account cards show
+  const [display, { location, consent }, user, accounts, hints] = await Promise.all([
     displaySettings(head),
     locationState(head, (name) => jar.get(name)?.value),
-    currentUserId(head),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { name: true, image: true, username: true, displayUsername: true, email: true },
+    }),
+    db.account.findMany({
+      where: { userId },
+      select: { id: true, providerId: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    listHints(userId),
   ]);
-  // everything the account cards show, only for a signed in user
-  const [user, accounts, hints] = userId
-    ? await Promise.all([
-        db.user.findUnique({
-          where: { id: userId },
-          select: { name: true, image: true, username: true, displayUsername: true, email: true },
-        }),
-        db.account.findMany({
-          where: { userId },
-          select: { id: true, providerId: true },
-          orderBy: { createdAt: "asc" },
-        }),
-        listHints(userId),
-      ])
-    : [null, [], []];
   // a google only account has no "credential" row, so no password to change
   const hasPassword = accounts.some((a) => a.providerId === "credential");
   const keys: SavedKey[] = hints.map((h) => {
@@ -89,7 +85,6 @@ export default async function SettingsPage({
         </p>
       </div>
       <SettingsForm
-        signedIn={display.signedIn}
         location={location}
         consent={consent === true}
         textSize={display.textSize}
@@ -100,24 +95,16 @@ export default async function SettingsPage({
         <CardHeader>
           <CardTitle>Your data</CardTitle>
           <CardDescription>
-            {display.signedIn
-              ? "Everything we store about you, your account, settings and widgets, in 1 JSON file."
-              : "Sign in to download the data we store about you."}
+            Everything we store about you, your account, settings and widgets, in 1 JSON file.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {display.signedIn ? (
-            <Button asChild variant="outline">
-              {/* a plain link, the server answers w/ a file to save */}
-              <a href="/api/account/export" download>
-                <Download /> Download my data
-              </a>
-            </Button>
-          ) : (
-            <Button variant="outline" disabled>
+          <Button asChild variant="outline">
+            {/* a plain link, the server answers w/ a file to save */}
+            <a href="/api/account/export" download>
               <Download /> Download my data
-            </Button>
-          )}
+            </a>
+          </Button>
         </CardContent>
       </Card>
       {user && (
@@ -130,8 +117,8 @@ export default async function SettingsPage({
         />
       )}
       {user && <ConnectionsCard keys={keys} accounts={accounts} googleEnabled={googleEnabled} />}
-      {display.signedIn && <SecurityCard hasPassword={hasPassword} />}
-      {display.signedIn && <DeleteAccountCard />}
+      <SecurityCard hasPassword={hasPassword} />
+      <DeleteAccountCard />
       <PrivacyNotice />
     </div>
   );

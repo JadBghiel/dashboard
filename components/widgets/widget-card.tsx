@@ -3,7 +3,8 @@
 /** frame for every widget: icon, title, subtitle, the refresh and settings buttons top right, a
  * footer link, loading and error states. the widgets themselves only render content */
 
-import { RefreshCw, Settings } from "lucide-react";
+import { KeyRound, RefreshCw, Settings } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,9 @@ type Props = {
   footer?: React.ReactNode;
   // extra header buttons next to refresh, like the news settings
   actions?: React.ReactNode;
+  // the service needs the user's key first (403 not_subscribed): the error becomes a short how to,
+  // w/ a link to that service on the services page
+  lockedTo?: string;
   // the news panels' monitor look: monospace uppercase title, and a red "live" dot w/ a count
   monitor?: { count?: number };
   className?: string;
@@ -52,6 +56,7 @@ export function WidgetCard({
   onRefresh,
   footer,
   actions,
+  lockedTo,
   monitor,
   className,
   children,
@@ -111,14 +116,27 @@ export function WidgetCard({
         </CardAction>
       </CardHeader>
       <CardContent className="flex-1 space-y-3">
-        {hasData ? children : !error && <WidgetSkeleton />}
-        {error && (
+        {lockedTo ? (
+          <div className="space-y-3 py-2">
+            <p className="text-muted-foreground text-sm">{error}</p>
+            <Button asChild size="sm">
+              <Link href={`/services#${lockedTo}`}>
+                <KeyRound /> Set up on Services
+              </Link>
+            </Button>
+          </div>
+        ) : hasData ? (
+          children
+        ) : (
+          !error && <WidgetSkeleton />
+        )}
+        {error && !lockedTo && (
           <p role="alert" className="text-destructive text-sm">
             {error}
           </p>
         )}
       </CardContent>
-      {footer && hasData && (
+      {footer && hasData && !lockedTo && (
         <CardFooter className="border-t-0 bg-transparent pt-0">{footer}</CardFooter>
       )}
     </Card>

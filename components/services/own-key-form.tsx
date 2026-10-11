@@ -1,10 +1,9 @@
 "use client";
 
 /** "use your own key" for key services. the key is stored encrypted (#17) and never comes back, only
- * its last 4 characters, so the form shows that hint and a remove btn once one is saved. w/ nobody
- * signed in theres no account to save it to, the form is shown disabled w/ the reason */
+ * its last 4 characters, so the form shows that hint and a remove btn once one is saved */
 
-import { ExternalLink, KeyRound, Lock } from "lucide-react";
+import { ExternalLink, KeyRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -16,14 +15,12 @@ export function OwnKeyForm({
   serviceId,
   label,
   helpUrl,
-  signedIn,
   hint: savedHint,
   appKey,
 }: {
   serviceId: string;
   label: string;
   helpUrl: string;
-  signedIn: boolean;
   // last 4 characters of the saved key, null = none saved
   hint: string | null;
   // the server has its own key for this service: removing yours falls back to it instead of locking
@@ -95,19 +92,13 @@ export function OwnKeyForm({
       )}
 
       <form onSubmit={save}>
-        <fieldset disabled={!signedIn || busy} className="flex gap-2">
+        <fieldset disabled={busy} className="flex gap-2">
           <Input
             type="password"
             autoComplete="off"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={
-              signedIn
-                ? hint
-                  ? "Paste a new key to replace it"
-                  : "Paste your key"
-                : "Sign in to add your key"
-            }
+            placeholder={hint ? "Paste a new key to replace it" : "Paste your key"}
             aria-label={label}
           />
           <Button type="submit">Save</Button>
@@ -116,8 +107,7 @@ export function OwnKeyForm({
 
       <p className="text-muted-foreground flex items-center justify-between gap-2 text-xs">
         <span aria-live="polite" className="flex items-center gap-1">
-          {!signedIn && <Lock className="size-3" aria-hidden />}
-          {signedIn ? message : "Available once you're signed in"}
+          {message}
         </span>
         <a
           href={helpUrl}

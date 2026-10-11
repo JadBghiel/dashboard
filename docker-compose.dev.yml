@@ -21,8 +21,9 @@ services:
       retries: 15
   mailpit:
     image: axllent/mailpit:latest
+    # the inbox on 8026, the graded stack (docker-compose.yml) keeps 8025, so both can run at once
     ports:
-      - "8025:8025"
+      - "8026:8025"
       - "1025:1025"
 
   # own container instead of a 2nd database in the dev one, so a test run truncating tables can

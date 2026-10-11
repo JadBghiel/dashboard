@@ -36,7 +36,7 @@ export function CurrencyCard({ from = "EUR", to = "USD,GBP,JPY", amount = 100, o
   const [value, setValue] = useState(String(amount));
 
   const { data, error, loading, refresh } = useWidgetData<CurrencyPayload>(
-    "market",
+    "currencies",
     "currency_converter",
     { from: base, to: targets.join(","), amount },
     "",

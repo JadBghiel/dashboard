@@ -7,7 +7,7 @@ import { WidgetError } from "@/server/registry/define";
 
 import { getJson, ttlCache, UpstreamError } from "../http";
 
-const BASE_URL = "https://api.frankfurter.app";
+const BASE_URL = "https://api.frankfurter.dev/v1";
 
 // the ~30 currencies the ecb quotes. hard coded on purpose: its the list the upstream accepts, it
 // barely moves, and a wrong code is caught before any call

@@ -6,7 +6,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 
 ## AVAILABLE ONLINE ON VERCEL: [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
 
-![The dashboard in dark mode: weather, stocks, crypto, GitHub and the other widgets](assets/screenshots/dashboard.png)
+https://github.com/user-attachments/assets/b5f3d3e0-07b9-45f7-9c64-f17d69c46fd3
 
 ## What it is for
 
@@ -19,11 +19,15 @@ stocks and coins, the news you follow, today's puzzles, and more.
 
 ## Key features
 
-- **14 widgets from 5 services**, each with its own options, set from the gear on the card.
+- **16 widgets from 7 services**, each with its own options, set from the gear on the card.
+- **Your GitHub, through OAuth2:** connect your GitHub account on the Services page to see your
+  unread notifications and your public repositories. Read only; the token is stored encrypted and
+  disconnecting deletes it.
 - **Automatic refresh:** one timer drives the whole page; each widget refreshes at the rate you pick
   (never below the widget's minimum), and nothing runs while the tab is hidden.
-- **Your layout:** drag widgets to reorder them inside their section (mouse or keyboard), hide the
-  ones you don't want, and add them back from "Add widgets".
+- **Your layout:** add any widget as many times as you want, each copy with its own settings (a
+  weather for Madrid and one for Paris), drag widgets to reorder them inside their section (mouse or
+  keyboard), and remove the ones you don't want, with an undo.
 - **Saved per user:** widgets, options, order, location, text size and theme live in the database.
 - **Your location, with consent:** the weather, holidays and news follow your city. A city you pick
   always wins; your connection is only used to guess it after you say yes.
@@ -42,8 +46,10 @@ stocks and coins, the news you follow, today's puzzles, and more.
 | ------------ | ------------------------ | -------------------- | ------------------------------------------------------------------ |
 | Weather      | No                       | `current_weather`    | `city` (empty = your location), `units`, `show_wind`, `days` (0–7) |
 | Stock market | App key, or your own key | `stock_watchlist`    | `tickers` (up to 10 US stocks), `change` (percent or amount)       |
-|              |                          | `crypto_prices`      | `coins` (up to 15 CoinGecko ids), `currency` (usd, eur, gbp)       |
+| Currencies   | No                       | `crypto_prices`      | `coins` (up to 15 CoinGecko ids), `currency` (usd, eur, gbp)       |
 |              |                          | `currency_converter` | `from`, `to` (comma list), `amount`                                |
+| GitHub       | Your GitHub account      | `repositories`       | `count`, `sort` (pushed, created, full_name)                       |
+|              | (OAuth2)                 | `notifications`      | `count`, `only_participating`                                      |
 | Tools        | No                       | `public_holidays`    | `country` (empty = yours), `count`                                 |
 |              |                          | `translator`         | `from`, `to` (12 languages)                                        |
 |              |                          | `on_this_day`        | `type` (events, births, deaths), `count`, `language`               |
@@ -58,7 +64,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 The full, always up to date list (services, widgets, parameters and their types) is served at
 `/about.json`, generated from the same definitions the server validates with.
 
-**Where the data comes from:** Open-Meteo (weather), Finnhub (stocks), CoinGecko (crypto),
+**Where the data comes from:** Open-Meteo (weather), Finnhub (stocks), CoinGecko (crypto), GitHub,
 Frankfurter / European Central Bank (currencies), Nager.Date (holidays), MyMemory (translation),
 Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world events), YouTube
 (live TV), Datamuse, flagcdn and CountriesNow (games). Our server calls them; your browser never does.
@@ -70,19 +76,21 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
    in. Next time, log in with your username or your email. **Continue with Google** appears when the
    server has a Google client.
 2. **Open the dashboard.** Your widgets are grouped in three sections: Utility, News and Games.
-   Without an account you see the default widgets, read-only.
+   Everything except the privacy notice needs a confirmed account.
 3. **Set your location** with the pin in the top bar: search a city, or use your device position
    (you see what it is used for before your browser asks). Or answer "yes" to the question on the
    dashboard to let us guess your city from your connection.
 4. **Configure a widget** with its gear: its refresh rate and its options. Some options are on the
    card itself: heart a stock or a coin, pick a currency, a language or a TV channel.
-5. **Arrange the page** with **Edit layout**: drag a card, or tab to it and use Space and the arrows.
-   The cross hides a card. **Add widgets** turns any widget on or off.
-6. **Settings & privacy** (sidebar): location, text size, theme, download your data, delete your
+5. **Add a widget** with **Add widget**: pick one, set its options and refresh rate, add it. The same
+   widget can be added more than once.
+6. **Arrange the page** with **Edit layout**: drag a card, or tab to it and use Space and the arrows.
+   The cross removes a card; **Undo** puts it back for a few seconds.
+7. **Settings & privacy** (sidebar): location, text size, theme, download your data, delete your
    account (confirmed by an email link), and the privacy notice.
-7. **Services** (sidebar): what each service needs, and the form for your own API key.
+8. **Services** (sidebar): what each service needs, and the form for your own API key.
 
-8. **Log out** from your name at the bottom of the sidebar.
+9. **Log out** from your name at the bottom of the sidebar.
 
 ## Screenshots
 
@@ -93,10 +101,10 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
   </tr>
   <tr>
     <td width="50%"><img src="assets/screenshots/widget-settings.png" alt="A widget's settings window with the refresh rate and its options"><br><sub><b>Widget settings:</b> refresh rate and options, generated from the widget's schema</sub></td>
-    <td width="50%"><img src="assets/screenshots/edit-layout.png" alt="Edit layout mode with draggable cards and a cross to hide each one"><br><sub><b>Edit layout:</b> drag to reorder, the cross hides a card</sub></td>
+    <td width="50%"><img src="assets/screenshots/edit-layout.png" alt="Edit layout mode with draggable cards and a cross to remove each one"><br><sub><b>Edit layout:</b> drag to reorder, the cross removes a card</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="assets/screenshots/add-widgets.png" alt="Add widgets window with an on/off switch per widget"><br><sub><b>Add widgets:</b> one switch per widget, settings kept</sub></td>
+    <td width="50%"><img src="assets/screenshots/add-widgets.png" alt="Add widget window, configuring a second weather widget for Paris"><br><sub><b>Add widget:</b> pick a widget, set it up, add it, as many times as you want</sub></td>
     <td width="50%"><img src="assets/screenshots/services.png" alt="Services page with each service's status and the own key form"><br><sub><b>Services:</b> what each one needs, and your own API key</sub></td>
   </tr>
   <tr>
@@ -143,7 +151,7 @@ npm run dev
 
 `npm run setup` creates `.env.local` (with a fresh `CREDENTIALS_KEY`), starts Postgres and Mailpit in
 Docker, applies the migrations and seeds two accounts. The emails the app sends locally (account
-confirmation, account deletion) land in the Mailpit inbox at http://localhost:8025. It is safe to rerun, and it is also how you start the
+confirmation, account deletion) land in the Mailpit inbox at http://localhost:8026. It is safe to rerun, and it is also how you start the
 database again after a reboot. To stop it: `docker compose -f docker-compose.dev.yml down`.
 
 | Account | Email                  | Password              |
@@ -177,6 +185,7 @@ each production build (`vercel.json`). The production environment needs:
 | `SENDGRID_API_KEY`, `MAIL_FROM`            | Sends the confirmation emails. `MAIL_FROM` is the verified sender |
 | `FINNHUB_API_KEY`                          | The app's own stock market key                                    |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional, "Continue with Google"                                  |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Optional, the GitHub widgets (OAuth app on github.com)            |
 
 ### Tests
 
@@ -203,17 +212,18 @@ outside service faked by Mock Service Worker, so the tests never touch your data
 | `npm run typecheck`  | Generate route types, then `tsc`                           |
 | `npm run format`     | Format with Prettier                                       |
 | `npm run check`      | Lint, typecheck and format check                           |
+| `npm run videos`     | Film the demo video, frame by frame (needs `npm run dev`)  |
 
 ## Technology and specifications
 
-| Layer    | Technology                                                                      |
-| -------- | ------------------------------------------------------------------------------- |
-| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui, dnd-kit, d3-geo   |
-| API      | Hono with `@hono/zod-openapi`, mounted inside the Next.js app under `/api`      |
-| Data     | PostgreSQL with Prisma 7 (Neon on Vercel, a container in Docker)                |
-| Accounts | better-auth (email and password, email confirmation, OAuth for linked accounts) |
-| Tests    | Vitest and Mock Service Worker                                                  |
-| Hosting  | Vercel (production), Docker Compose (the graded stack, port 8080)               |
+| Layer    | Technology                                                                           |
+| -------- | ------------------------------------------------------------------------------------ |
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui, dnd-kit, d3-geo        |
+| API      | Hono with `@hono/zod-openapi`, mounted inside the Next.js app under `/api`           |
+| Data     | PostgreSQL with Prisma 7 (Neon on Vercel, a container in Docker)                     |
+| Accounts | better-auth (email and password, email confirmation, Google sign-in, GitHub linking) |
+| Tests    | Vitest and Mock Service Worker                                                       |
+| Hosting  | Vercel (production), Docker Compose (the graded stack, port 8080)                    |
 
 **How it works**
 
@@ -227,10 +237,23 @@ outside service faked by Mock Service Worker, so the tests never touch your data
 - **Shared cache:** in memory, then in a database table shared by every server instance; identical
   requests share one outside call; each widget sets how long its answer stays fresh.
 - **Rate limit:** 150 widget requests a minute per user (or IP), with `429` and `Retry-After` above it.
-- **Security:** every query is scoped to the signed-in user, errors never leak internals, cookies are
-  `HttpOnly`, user API keys are sealed with AES-256-GCM, and the IP location needs consent (GDPR).
+- **Security:** every page and widget request needs a confirmed account, every query is scoped to the
+  signed-in user, errors never leak internals, cookies are `HttpOnly`, user API keys and GitHub tokens
+  are encrypted in the database, and the IP location needs consent (GDPR).
 - **The timer:** one schedule for the whole page, a tick every second; each widget runs at its saved
   rate, with a small random delay so widgets don't all refresh at once.
+
+## Design
+
+**The whole system.** One Next.js app: the browser only talks to our API, the server reads the
+database, keeps a shared cache and calls the outside services.
+
+![Architecture: the browser, our Next.js and Hono server, Postgres and the outside services](assets/diagrams/architecture.png)
+
+**One widget fetch.** Every card gets its data the same way: the options are checked, the cache
+answers, and the outside service is only called on a miss.
+
+![Sequence of one widget fetch, from the card through the API, the pipeline and the cache to the outside service](assets/diagrams/widget-fetch.png)
 
 ## Project structure
 

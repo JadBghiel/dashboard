@@ -4,18 +4,22 @@
 
 import type { Prisma } from "@/generated/prisma/client";
 import { DEFAULT_COINS } from "@/server/crypto-watchlist";
+import { DEFAULT_TICKERS } from "@/server/market-watchlist";
 import { db } from "@/server/db";
 import { registry } from "@/server/registry";
 import type { WidgetDef } from "@/server/registry/define";
 import { NotSubscribedError, requireSubscription } from "@/server/subscriptions";
 
 // what a new user starts with: 1 of each widget, in the order of the dashboard sections
-// the optional 3rd item overrides the widget defaults, crypto starts w/ 8 coins instead of none
+// the optional 3rd item overrides the widget defaults, stocks and crypto start w/ a few instead of none
 export const DEFAULT_WIDGETS: [service: string, widget: string, params?: object][] = [
   ["weather", "current_weather"],
-  ["market", "stock_watchlist"],
-  ["market", "crypto_prices", { coins: DEFAULT_COINS.join(",") }],
-  ["market", "currency_converter"],
+  ["market", "stock_watchlist", { tickers: DEFAULT_TICKERS.join(",") }],
+  ["currencies", "crypto_prices", { coins: DEFAULT_COINS.join(",") }],
+  // locked until the user connects github, both cards say how
+  ["github", "repositories"],
+  ["github", "notifications"],
+  ["currencies", "currency_converter"],
   ["tools", "public_holidays"],
   ["tools", "translator"],
   ["tools", "on_this_day"],
@@ -31,7 +35,7 @@ export const DEFAULT_WIDGETS: [service: string, widget: string, params?: object]
 // slowest refresh a user can pick, the timer still needs to come back once a day
 export const MAX_REFRESH_SEC = 86_400;
 
-// a full dashboard is 14, this leaves room for duplicates while a script cant fill the table
+// a full dashboard is 16, this leaves room for duplicates while a script cant fill the table
 export const MAX_INSTANCES = 50;
 
 export class InstanceError extends Error {
@@ -90,21 +94,6 @@ function checkRefresh(widget: WidgetDef, sec: number) {
     );
   }
   return sec;
-}
-
-/** the defaults w/o a db row, for a dashboard w/ nobody signed in: read only, nothing to save to */
-export function defaultInstances() {
-  return DEFAULT_WIDGETS.map(([serviceId, widgetId, params], position) => {
-    const widget = widgetOf(serviceId, widgetId);
-    return {
-      id: `default-${serviceId}-${widgetId}`,
-      serviceId,
-      widgetId,
-      params: parseParams(widget, params ?? {}) as Record<string, unknown>,
-      refreshSec: widget.refresh.default,
-      position,
-    };
-  });
 }
 
 const byPosition = (userId: string) =>

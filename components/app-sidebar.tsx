@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AppMark } from "@/components/app-mark";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/user-avatar";
 import {
@@ -69,9 +70,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
-            <LayoutDashboard className="size-4" />
-          </div>
+          <AppMark />
           <span className="font-heading truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
             Dashboard
           </span>

@@ -35,10 +35,6 @@ export type SectionItem = {
   label: string;
   // grid placement inside the section, like "lg:col-span-3"
   className?: string;
-  // a placeholder, not a saved widget: it stays put and has no cross
-  fixed?: boolean;
-  // where a fixed card sits among the others, 0 based. it never moves, the others flow around it
-  at?: number;
   node: React.ReactNode;
 };
 
@@ -66,13 +62,7 @@ export function SortableSection({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const sortable = items.filter((i) => !i.fixed);
-  // the fixed cards slotted in at their place, so dnd-kit lays out the grid w/ them in it
-  const ordered = [...sortable];
-  for (const f of items.filter((i) => i.fixed)) {
-    ordered.splice(Math.min(f.at ?? ordered.length, ordered.length), 0, f);
-  }
-  const ids = ordered.map((i) => i.id);
+  const ids = items.map((i) => i.id);
   const byId = new Map(items.map((i) => [i.id, i]));
   const label = (key: string | number) => byId.get(String(key))?.label ?? String(key);
 
@@ -92,9 +82,7 @@ export function SortableSection({
 
   function onDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
-    const moved = arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
-    // only the saved widgets go to the server, a fixed card stays at its own place
-    onReorder(moved.filter((i) => !byId.get(i)?.fixed));
+    onReorder(arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))));
   }
 
   return (
@@ -108,12 +96,12 @@ export function SortableSection({
     >
       <SortableContext items={ids} strategy={rectSortingStrategy}>
         <div className={grid}>
-          {ordered.map((item) => (
+          {items.map((item) => (
             <SortableCard
               key={item.id}
               item={item}
-              editing={editing && !item.fixed}
-              movable={editing && !item.fixed && sortable.length > 1}
+              editing={editing}
+              movable={editing && items.length > 1}
               onRemove={() => onRemove(item.id)}
             />
           ))}
