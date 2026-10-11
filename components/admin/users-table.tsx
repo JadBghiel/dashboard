@@ -19,7 +19,7 @@ type User = {
   role: string | null;
   banned: boolean | null;
   banReason: string | null;
-  // the services the user subscribed to w/ their own key
+  // the services the user subscribed to, w/ their own key or a linked account
   subscriptions: number;
 };
 

@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 // better-auth's error codes, as it appends them to the callback url (?error=TOKEN_EXPIRED). logging in
 // w/ an unconfirmed email mails a fresh link (sendOnSignIn in lib/auth.ts)
+export const metadata: Metadata = { title: "Confirm your email" };
+
 const MESSAGES: Record<string, string> = {
   INVALID_TOKEN: "This confirmation link is invalid. Log in to get a new one.",
   TOKEN_EXPIRED: "This confirmation link has expired. Log in to get a new one.",

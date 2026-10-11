@@ -18,7 +18,15 @@ import { authClient } from "@/lib/auth-client";
 export type SavedKey = { serviceId: string; serviceName: string; label: string; hint: string };
 
 // better-auth's provider ids, as the user knows them
-const PROVIDERS: Record<string, string> = { credential: "Email and password", google: "Google" };
+const PROVIDERS: Record<string, string> = {
+  credential: "Email and password",
+  google: "Google",
+  github: "GitHub",
+};
+// the ways to log in. any other provider (github) is linked for its widgets only, it has no sign in
+// btn, so it never counts as a way in: unlinking google next to it would lock the user out
+const LOGIN_PROVIDERS = new Set(["credential", "google"]);
+const providerName = (id: string) => PROVIDERS[id] ?? id;
 
 // 1 way to log in: the account row's id (what unlink takes) and its provider ("credential" = password)
 export type LoginAccount = { id: string; providerId: string };
@@ -33,6 +41,8 @@ export function ConnectionsCard({
   googleEnabled: boolean;
 }) {
   const router = useRouter();
+  const logins = accounts.filter((a) => LOGIN_PROVIDERS.has(a.providerId));
+  const linked = accounts.filter((a) => !LOGIN_PROVIDERS.has(a.providerId));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +85,8 @@ export function ConnectionsCard({
       <CardHeader>
         <CardTitle>Keys and connected accounts</CardTitle>
         <CardDescription>
-          The API keys you saved and the ways you log in. Remove any of them at any time.
+          The API keys and accounts your widgets use, and the ways you log in. Remove any of them at
+          any time.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -126,23 +137,15 @@ export function ConnectionsCard({
             How you log in
           </h3>
           <ul className="divide-y rounded-lg border">
-            {accounts.map((a) => (
+            {logins.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <span className="flex items-center gap-2 text-sm">
-                  {PROVIDERS[a.providerId] ?? a.providerId}
-                  {accounts.length === 1 && <Badge variant="secondary">Your only way in</Badge>}
+                  {providerName(a.providerId)}
+                  {logins.length === 1 && <Badge variant="secondary">Your only way in</Badge>}
                 </span>
                 {/* the password isn't a linked account, and the last way in can't be removed */}
-                {a.providerId !== "credential" && accounts.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy === `account-${a.providerId}`}
-                    onClick={() => unlink(a)}
-                    aria-label={`Unlink ${PROVIDERS[a.providerId] ?? a.providerId}`}
-                  >
-                    Unlink
-                  </Button>
+                {a.providerId !== "credential" && logins.length > 1 && (
+                  <UnlinkButton account={a} busy={busy} onUnlink={unlink} />
                 )}
               </li>
             ))}
@@ -159,6 +162,22 @@ export function ConnectionsCard({
           )}
         </section>
 
+        {linked.length > 0 && (
+          <section aria-labelledby="linked-title" className="space-y-2">
+            <h3 id="linked-title" className="text-sm font-medium">
+              Linked for your widgets
+            </h3>
+            <ul className="divide-y rounded-lg border">
+              {linked.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="text-sm">{providerName(a.providerId)}</span>
+                  <UnlinkButton account={a} busy={busy} onUnlink={unlink} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {error && (
           <p role="alert" className="text-destructive text-sm">
             {error}
@@ -166,5 +185,27 @@ export function ConnectionsCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function UnlinkButton({
+  account,
+  busy,
+  onUnlink,
+}: {
+  account: LoginAccount;
+  busy: string | null;
+  onUnlink: (account: LoginAccount) => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={busy === `account-${account.providerId}`}
+      onClick={() => onUnlink(account)}
+      aria-label={`Unlink ${providerName(account.providerId)}`}
+    >
+      Unlink
+    </Button>
   );
 }
