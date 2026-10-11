@@ -90,7 +90,8 @@ Wikipedia (on this day), Google News (headlines), USGS and NASA EONET (world eve
    (you see what it is used for before your browser asks). Or answer "yes" to the question on the
    dashboard to let us guess your city from your connection.
 4. **Configure a widget** with its gear: its refresh rate and its options. Some options are on the
-   card itself: heart a stock or a coin, pick a currency, a language or a TV channel.
+   card itself: heart a stock or a coin, pick a currency, a language or a TV channel. The daily
+   puzzles have no refresh rate, a new one comes at midnight UTC.
 5. **Add a widget** with **Add widget**: pick one, set its options and refresh rate, add it. The same
    widget can be added more than once.
 6. **Arrange the page** with **Edit layout**: drag a card, or tab to it and use Space and the arrows.
@@ -307,10 +308,10 @@ answers, and the outside service is only called on a miss.
 ## Project structure
 
 ```
-app/          pages (dashboard, services, settings) and the /api entry
-components/   widget cards, the dashboard, settings, shadcn/ui parts
-lib/          browser and shared code: the API client, the timer
+app/          pages (dashboard, services, settings, admin, log in and register) and the /api entry
+components/   widget cards, the dashboard, settings, admin, shadcn/ui parts
+lib/          browser and shared code: the API client, the timer, better-auth and its checks
 server/       the Hono API, the widget registry, services, cache, rate limit, encryption
 prisma/       database schema and migrations
-tests/        Vitest tests and the fake services
+tests/        Vitest tests: sign up, log in, password reset, admin rules, keys, subscriptions
 ```
