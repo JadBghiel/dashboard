@@ -23,7 +23,6 @@ const Instance = z.object({
   params: z.record(z.string(), z.unknown()),
   refreshSec: z.number().int(),
   position: z.number().int(),
-  hidden: z.boolean(),
 });
 const List = z.object({ instances: z.array(Instance) });
 const Id = z.object({ id: z.string().min(1).max(40) });
@@ -50,7 +49,8 @@ export const createInstanceRoute = createRoute({
   method: "post",
   path: "/instances",
   tags: ["instances"],
-  summary: "add a widget, its params checked against the widget's schema",
+  summary:
+    "add a widget, the same 1 as many times as you want, its params checked against its schema",
   request: body(
     z.object({
       serviceId: z.string().max(40),
@@ -72,22 +72,19 @@ export const updateInstanceRoute = createRoute({
   method: "patch",
   path: "/instances/{id}",
   tags: ["instances"],
-  summary:
-    "change a widget's options, refresh rate or visibility, params are merged into the saved ones",
+  summary: "change a widget's options or refresh rate, params are merged into the saved ones",
   request: {
     params: Id,
     ...body(
       z.object({
         params: Params.optional(),
         refreshSec: z.number().int().optional(),
-        hidden: z.boolean().optional(),
       }),
     ),
   },
   responses: {
     200: json("the widget as saved", Instance),
     400: errorResponse("bad params or refresh rate"),
-    403: errorResponse("switching on a widget of a service you're not subscribed to"),
     404: errorResponse("not 1 of your widgets"),
     ...unauthorized,
   },
@@ -155,7 +152,10 @@ export const updateInstanceHandler: RouteHandler<typeof updateInstanceRoute> = a
     const row = await updateInstance(userId, c.req.valid("param").id, c.req.valid("json"));
     return c.json(row as z.infer<typeof Instance>, 200);
   } catch (err) {
-    return failed(c, err);
+    // no subscription check on a change, only 404 or bad values
+    if (!(err instanceof InstanceError)) throw err;
+    if (err.status === 404) return c.json({ code: "not_found", message: err.message }, 404);
+    return c.json({ code: "bad_request", message: err.message }, 400);
   }
 };
 

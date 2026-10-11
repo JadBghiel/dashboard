@@ -122,8 +122,6 @@ model WidgetInstance {
   refreshSec Int
   // not unique on purpose, rewritted when reorder
   position   Int
-  // switched off in "add widgets": kept w/ its settings, just not on the dash
-  hidden     Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

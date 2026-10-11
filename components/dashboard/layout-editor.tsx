@@ -1,7 +1,7 @@
 "use client";
 
 /** 1 dashboard section while editing the layout: every card becomes 1 big drag handle w/ a cross to
- * hide it, and its content goes inert, so a drag cant type into an input or open a link. drag w/ the
+ * remove it, and its content goes inert, so a drag cant type into an input or open a link. drag w/ the
  * mouse or a finger, or from the keyboard: tab to a card, space to pick it up, arrows to move, space
  * to drop. a card moves inside its own section */
 
@@ -48,13 +48,13 @@ export function SortableSection({
   items,
   editing,
   onReorder,
-  onHide,
+  onRemove,
   grid = DEFAULT_GRID,
 }: {
   items: SectionItem[];
   editing: boolean;
   onReorder: (ids: string[]) => void;
-  onHide: (id: string) => void;
+  onRemove: (id: string) => void;
   // the section's own grid, the news one has fixed column spans
   grid?: string;
 }) {
@@ -114,7 +114,7 @@ export function SortableSection({
               item={item}
               editing={editing && !item.fixed}
               movable={editing && !item.fixed && sortable.length > 1}
-              onHide={() => onHide(item.id)}
+              onRemove={() => onRemove(item.id)}
             />
           ))}
         </div>
@@ -127,13 +127,13 @@ function SortableCard({
   item,
   editing,
   movable,
-  onHide,
+  onRemove,
 }: {
   item: SectionItem;
   editing: boolean;
   // alone in its section: nothing to swap w/, so no drag, the cross still shows
   movable: boolean;
-  onHide: () => void;
+  onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -165,11 +165,11 @@ function SortableCard({
           </span>
           <button
             type="button"
-            onClick={onHide}
-            // kept away from the drag sensors, a press here hides the card and never picks it up
+            onClick={onRemove}
+            // kept away from the drag sensors, a press here removes the card and never picks it up
             onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
-            aria-label={`Hide ${item.label}`}
+            aria-label={`Remove ${item.label}`}
             className="bg-background text-muted-foreground hover:text-destructive focus-visible:ring-ring absolute -top-3 -right-3 z-10 flex size-7 items-center justify-center rounded-full border shadow-sm focus-visible:ring-2 focus-visible:outline-none"
           >
             <X className="size-4" />

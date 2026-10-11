@@ -13,7 +13,6 @@ export type InstanceView = {
   widgetId: string;
   params: Record<string, unknown>;
   refreshSec: number;
-  hidden: boolean;
 };
 
 /** what the settings window needs to know about a widget, from the registry catalog */
@@ -26,7 +25,6 @@ export type WidgetSpec = {
 export type InstancePatch = {
   params?: Record<string, unknown>;
   refreshSec?: number;
-  hidden?: boolean;
 };
 
 /** a card's own settings section, for options a plain field cant render well (the news topics) */

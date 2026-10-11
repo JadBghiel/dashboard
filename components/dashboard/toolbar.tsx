@@ -49,7 +49,7 @@ export function Toolbar({
             </Button>
             <Button variant="outline" size="sm" onClick={onAdd}>
               <Plus />
-              Add widgets
+              Add widget
             </Button>
           </div>
         ) : (
@@ -63,7 +63,7 @@ export function Toolbar({
       </div>
       {editing && (
         <p className="text-muted-foreground text-sm">
-          Drag a card to move it, or tab to it and use space and the arrows. The cross hides it.
+          Drag a card to move it, or tab to it and use space and the arrows. The cross removes it.
         </p>
       )}
       {!signedIn && (
