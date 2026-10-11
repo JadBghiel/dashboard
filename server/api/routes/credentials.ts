@@ -42,6 +42,7 @@ export const saveKeyRoute = createRoute({
   },
   responses: {
     200: json("saved, its hint", Hint),
+    400: errorResponse("the service refused the key"),
     404: errorResponse("no service that takes a key"),
     ...unauthorized,
   },
@@ -68,10 +69,17 @@ export const putKey: RouteHandler<typeof saveKeyRoute> = async (c) => {
   const userId = await currentUserId(c.req.raw.headers);
   if (!userId) return c.json(noUser, 401);
   const { serviceId } = c.req.valid("param");
-  if (registry.getService(serviceId)?.auth !== "api_key") {
+  const service = registry.getService(serviceId);
+  if (service?.auth !== "api_key") {
     return c.json({ code: "not_found", message: "That service doesn't take a key." }, 404);
   }
-  return c.json(await saveKey(userId, serviceId, c.req.valid("json").apiKey), 200);
+  const { apiKey } = c.req.valid("json");
+  // a mistyped key would be saved and every card would just fail, the user is told now instead
+  if ((await service.key?.check?.(apiKey, AbortSignal.timeout(8000))) === false) {
+    const message = `This ${service.key?.label ?? "key"} was refused. Check it and try again.`;
+    return c.json({ code: "invalid_key", message }, 400);
+  }
+  return c.json(await saveKey(userId, serviceId, apiKey), 200);
 };
 
 export const removeKey: RouteHandler<typeof deleteKeyRoute> = async (c) => {

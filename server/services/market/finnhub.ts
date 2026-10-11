@@ -36,8 +36,26 @@ async function getJson(
   });
   // 403 is the free plan saying no, in practice a non us listing
   if (res.status === 403) throw new WidgetError("Only US listed tickers are available.");
+  // the user's own key refused (revoked since it was saved): theirs to fix, not "unavailable"
+  if (res.status === 401 && ownKey) {
+    throw new WidgetError(
+      "Finnhub refused your API key. Change or remove it on the Services page.",
+    );
+  }
   if (!res.ok) throw new UpstreamError("finnhub", res.status);
   return res.json();
+}
+
+/** before a user's key is saved: 401 = finnhub refused it. finnhub down or rate limited says nothing
+ * about the key, it's saved then */
+export async function keyWorks(key: string, signal: AbortSignal): Promise<boolean> {
+  const url = new URL(`${BASE_URL}/quote`);
+  url.searchParams.set("symbol", "AAPL");
+  const res = await fetch(url, {
+    signal,
+    headers: { accept: "application/json", "X-Finnhub-Token": key },
+  }).catch(() => null);
+  return res?.status !== 401;
 }
 
 // ---- search ----

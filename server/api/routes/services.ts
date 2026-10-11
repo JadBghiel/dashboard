@@ -48,7 +48,7 @@ export const listServices: RouteHandler<typeof servicesRoute> = async (c) => {
     category: s.category,
     auth: s.auth,
     status: serviceStatus(registry.getService(s.id)!, ownKeys.has(s.id) || linked.has(s.id)),
-    key: s.key,
+    key: s.key ? { label: s.key.label, helpUrl: s.key.helpUrl } : null,
     widgets: s.widgets.map((w) => ({ id: w.id, name: w.name, description: w.description })),
   }));
   return c.json({ services }, 200);

@@ -68,8 +68,14 @@ export type ServiceDef = {
   description: string;
   category: ServiceCategory;
   auth: ServiceAuth;
-  // services w/ auth api_key: what the key is called and where to get one, for the services page
-  key?: { label: string; helpUrl: string; env: string };
+  // services w/ auth api_key: what the key is called and where to get one, for the services page.
+  // check asks the upstream if a key works before it's saved, false = refused
+  key?: {
+    label: string;
+    helpUrl: string;
+    env: string;
+    check?: (key: string, signal: AbortSignal) => Promise<boolean>;
+  };
   widgets: readonly WidgetDef[];
 };
 
@@ -84,6 +90,8 @@ export type ParamSpec = {
   options?: string[];
   min?: number;
   max?: number;
+  // what an empty field means, from the schema's .describe(), the form shows it as a placeholder
+  hint?: string;
 };
 
 const ID = /^[a-z][a-z0-9_]*$/;
@@ -99,14 +107,21 @@ export function describeParams(widgetId: string, schema: ParamsSchema): ParamSpe
     let inner = field as z.ZodType;
     let required = true;
     let fallback: ParamSpec["default"];
+    let hint = inner.description;
 
     while (inner.def.type === "default" || inner.def.type === "optional") {
       required = false;
       if (inner instanceof z.ZodDefault) fallback = inner.def.defaultValue as ParamSpec["default"];
       inner = (inner as z.ZodDefault | z.ZodOptional).def.innerType as z.ZodType;
+      hint ??= inner.description;
     }
 
-    const base = { name, required, ...(fallback !== undefined && { default: fallback }) };
+    const base = {
+      name,
+      required,
+      ...(fallback !== undefined && { default: fallback }),
+      ...(hint && { hint }),
+    };
 
     if (inner instanceof z.ZodString) {
       return { ...base, type: "string", kind: "string" };

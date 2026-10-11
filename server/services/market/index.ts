@@ -5,6 +5,7 @@
 
 import { defineService } from "@/server/registry/define";
 
+import { keyWorks } from "./finnhub";
 import { cryptoWidget } from "./widgets/crypto";
 import { currencyWidget } from "./widgets/currency";
 import { watchlistWidget } from "./widgets/watchlist";
@@ -15,7 +16,12 @@ export const market = defineService({
   description: "US stocks, live prices and a watchlist",
   category: "utility",
   auth: "api_key",
-  key: { label: "Finnhub API key", helpUrl: "https://finnhub.io/register", env: "FINNHUB_API_KEY" },
+  key: {
+    label: "Finnhub API key",
+    helpUrl: "https://finnhub.io/register",
+    env: "FINNHUB_API_KEY",
+    check: keyWorks,
+  },
   widgets: [watchlistWidget],
 });
 
