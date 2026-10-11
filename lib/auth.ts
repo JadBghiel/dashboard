@@ -72,6 +72,41 @@ async function refuseSelfDemotion(ctx: Parameters<Parameters<typeof createAuthMi
   }
 }
 
+//the rateLimit rules at the bottom count per ip, so a botnet still gets 5 guesses a minute from each
+//of its addresses on 1 account. these count per account, whatever the ip. the identifier the request
+//names, a username counted as its account's email so both forms share 1 count. an unknown 1 is
+//limited the same, nothing leaks. in memory like better-auth's own, each server copy counts on its own
+const ACCOUNT_LIMITS: Record<
+  string,
+  { field: string; bucket: string; max: number; window: number }
+> = {
+  "/sign-in/email": { field: "email", bucket: "sign-in", max: 10, window: 15 * 60 },
+  "/sign-in/username": { field: "username", bucket: "sign-in", max: 10, window: 15 * 60 },
+  //each 1 sends a mail, the inbox shouldn't get flooded from many ips either
+  "/send-verification-email": { field: "email", bucket: "verify", max: 5, window: 15 * 60 },
+};
+const accountWindows = new Map<string, { count: number; resetAt: number }>();
+
+async function accountLimited(path: string, body: Record<string, unknown> | undefined) {
+  const rule = ACCOUNT_LIMITS[path];
+  const value = body?.[rule?.field ?? ""];
+  if (!rule || typeof value !== "string") return false;
+  let id = value.trim().toLowerCase();
+  if (rule.field === "username") {
+    const user = await db.user.findUnique({ where: { username: id }, select: { email: true } });
+    if (user) id = user.email;
+  }
+  const key = `${rule.bucket}:${id}`;
+  const now = Date.now();
+  let w = accountWindows.get(key);
+  if (!w || w.resetAt <= now) {
+    if (accountWindows.size >= 10_000) accountWindows.clear();
+    w = { count: 0, resetAt: now + rule.window * 1000 };
+    accountWindows.set(key, w);
+  }
+  return ++w.count > rule.max;
+}
+
 //the new email is typed by the user and goes into a mail's html
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -214,6 +249,11 @@ export const auth = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ADMIN_ROLE_CHANGES.has(ctx.path)) await refuseSelfDemotion(ctx);
+      if (await accountLimited(ctx.path, ctx.body)) {
+        throw new APIError("TOO_MANY_REQUESTS", {
+          message: "Too many attempts on this account. Try again in a few minutes.",
+        });
+      }
       //we check if the password they used to register is too easy to guess
       if (ctx.path === "/sign-up/email") {
         //we can't put it in the databaseHooks cuz they only see the password hash
@@ -264,6 +304,9 @@ export const auth = betterAuth({
             email: session.user.email,
           });
         if (reason) throw new APIError("UNPROCESSABLE_ENTITY", { message: reason });
+        //the other devices are signed out whatever the request asks: the security card sends true,
+        //but a direct call w/ false would leave a thief who knew the old password signed in
+        return { context: { body: { ...ctx.body, revokeOtherSessions: true } } };
       }
     }),
   },
