@@ -6,7 +6,7 @@ stocks and coins, the news you follow, today's puzzles, and more.
 
 ## ACCESS THE [DASHBOARD](https://dashboard-jad-nico.vercel.app/)
 
-https://github.com/user-attachments/assets/1afa7ca5-6ad4-4166-beed-344738a4560a
+![Demo of the dashboard](assets/demo.gif)
 
 ## What it is for
 
